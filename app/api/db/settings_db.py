@@ -17,6 +17,3 @@ env_file = os.path.join(
 )
 
 settings = Settings(_env_file=env_file)
-
-
-print(settings.model_dump())
