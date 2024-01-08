@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     POSTGRES_DB: str
     POSTGRES_HOST: str
     POSTGRES_HOSTNAME: str
-
+    SECRET_KEY: str
     model_config = SettingsConfigDict(env_file=dotenv.find_dotenv(".env"))
 
 
