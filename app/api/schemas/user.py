@@ -28,4 +28,4 @@ class Token(BaseModel):
 
 
 class DataToken(BaseModel):
-    id: str | None = None
+    id: int | None = None

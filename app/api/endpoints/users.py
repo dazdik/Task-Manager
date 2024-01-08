@@ -5,8 +5,8 @@ from sqlalchemy import select
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.db import User, get_db_session
-
+from app.api.db import User, get_db_session, UserRole
+from app.api.endpoints.dependencies import get_current_user, check_role
 
 from app.api.schemas import CreateUserSchema
 
@@ -51,3 +51,11 @@ async def get_users(session: AsyncSession = Depends(get_db_session)):
         users_without_passwords.append(user_data)
 
     return users_without_passwords
+
+
+@router.get("/me")
+@check_role(UserRole.ADMIN, UserRole.MANAGER, UserRole.USER)
+async def get_me(user: User = Depends(get_current_user)):
+    return user
+
+
