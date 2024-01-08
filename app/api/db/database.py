@@ -11,9 +11,9 @@ from sqlalchemy.ext.asyncio import (
 from app.api.db.settings_db import settings
 
 db_url: str = (
-    f"postgresql+asyncpg://{settings.POSTGRES_USER}:"
-    f"{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOSTNAME}:"
-    f"{settings.DATABASE_PORT}/{settings.POSTGRES_DB}"
+    f"postgresql+asyncpg://{settings.DB.USER}:"
+    f"{settings.DB.PASSWORD}@{settings.DB.HOSTNAME}:"
+    f"{settings.DB.PORT}/{settings.DB.NAME}"
 )
 
 

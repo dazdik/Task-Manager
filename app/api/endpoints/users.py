@@ -1,8 +1,7 @@
-import os
 from datetime import datetime, timedelta
 
 import jwt
-from dotenv import load_dotenv
+
 from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt import PyJWTError
@@ -12,15 +11,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.db import User, get_db_session
+from app.api.db.settings_db import settings
 from app.api.schemas import CreateUserSchema, DataToken, Token
 
-load_dotenv()
 
 router = APIRouter(prefix="/api", tags=["Users"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
-SECRET_KEY = os.getenv("SECRET_KEY")
-print(SECRET_KEY)
+SECRET_KEY = settings.AUTH.KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
