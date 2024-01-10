@@ -1,9 +1,8 @@
 from sqladmin import ModelView
 
+
 from app.api.db import User, Task
 
-
-# from main import admin
 from app.api.db.models import UserTasksAssociation
 
 

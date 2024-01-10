@@ -56,6 +56,4 @@ async def get_users(session: AsyncSession = Depends(get_db_session)):
 @router.get("/me")
 @check_role(UserRole.ADMIN, UserRole.MANAGER, UserRole.USER)
 async def get_me(user: User = Depends(get_current_user)):
-    return user
-
-
+    return user.username
