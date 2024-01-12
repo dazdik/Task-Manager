@@ -33,26 +33,6 @@ async def auth_middleware(
     request: Request, call_next, user: User = Depends(get_current_user)
 ):
     if request.url.path.startswith("/admin"):
-        auth_header = request.headers.get("Authorization")
-        if not auth_header:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Authorization header missing",
-            )
-
-        try:
-            scheme, token = auth_header.split()
-            if scheme.lower() != "bearer":
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Wrong authentication scheme",
-                )
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid authorization header format",
-            )
-
         if not user and user.role != UserRole.ADMIN:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Access Denied"
