@@ -32,7 +32,7 @@ app = FastAPI(lifespan=lifespan)
 async def auth_middleware(
     request: Request, call_next, user: User = Depends(get_current_user)
 ):
-    if request.url.path.startswith("/admin"):
+    if request.url.path.startswith("/admin/"):
         if not user and user.role != UserRole.ADMIN:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Access Denied"
