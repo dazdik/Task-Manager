@@ -10,13 +10,12 @@ from app.api.db import get_db_session, User
 from app.api.endpoints.auth import verify_access_token
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login/")
 
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme), session: AsyncSession = Depends(get_db_session)
 ):
-
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Не удалось проверить учетные данные",
@@ -35,18 +34,14 @@ def check_role(*roles):
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            user: User = kwargs.get('user')
+            user: User = kwargs.get("user")
             if user.role not in roles:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="The user doesn't have enough privileges")
+                    detail="The user doesn't have enough privileges",
+                )
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator
-
-
-
-
-
-
-

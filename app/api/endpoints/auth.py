@@ -49,7 +49,7 @@ def verify_access_token(token: str, credentials_exception):
     return token_data
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login/", response_model=Token)
 async def login(
     userdetails: OAuth2PasswordRequestForm = Depends(),
     session: AsyncSession = Depends(get_db_session),
