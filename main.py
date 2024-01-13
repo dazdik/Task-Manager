@@ -1,21 +1,15 @@
 from contextlib import asynccontextmanager
-import uvicorn
-from fastapi import FastAPI, Request, HTTPException, status, Depends
 
-from app.api import router
-from app.api.db import sessionmanager, UserRole, User
+import uvicorn
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from sqladmin import Admin
 
-from app.api.db.admin import (
-    UserModelView,
-    TaskModelView,
-    UserTasksAssociationModelView,
-    AdminAuth,
-)
-from app.api.db.settings_db import settings
-
-
+from app.api import router
+from app.api.db import User, UserRole, sessionmanager
+from app.api.db.admin import (AdminAuth, TaskModelView, UserModelView,
+                              UserTasksAssociationModelView)
 from app.api.db.admin import router as admin_router
+from app.api.db.settings_db import settings
 
 
 @asynccontextmanager

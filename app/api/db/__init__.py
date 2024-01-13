@@ -10,4 +10,4 @@ __all__ = (
 )
 
 from .database import db_url, get_db_session, sessionmanager
-from .models import Base, Task, User, UserRole, TaskStatus
+from .models import Base, Task, TaskStatus, User, UserRole

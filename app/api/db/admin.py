@@ -1,17 +1,13 @@
-from fastapi import Depends, APIRouter, HTTPException
+from fastapi import APIRouter
 from sqladmin import ModelView
 from sqladmin.authentication import AuthenticationBackend
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from starlette import status
 from starlette.requests import Request
 
-from app.api.db import User, Task, get_db_session, sessionmanager
-from app.api.db.models import UserTasksAssociation, UserRole
+from app.api.db import Task, User, sessionmanager
+from app.api.db.models import UserRole, UserTasksAssociation
 from app.api.db.settings_db import settings
 from app.api.endpoints.auth import create_access_token, verify_password
-from app.api.endpoints.dependencies import get_current_user
-
 
 router = APIRouter(include_in_schema=False)
 
