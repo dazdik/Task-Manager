@@ -53,9 +53,19 @@ class AdminAuth(AuthenticationBackend):
             stmt = select(User).filter(User.username == username)
             result = await session.execute(stmt)
             user = result.scalar_one_or_none()
-            print(user.role, user.password, password, user.username, sep='\n')
-            if user and verify_password(password, user.password) and user.role == UserRole.ADMIN:
-                request.session.update({"token": create_access_token(data={'user_id': user.id, 'token_type': 'Bearer'})})
+
+            if (
+                user
+                and verify_password(password, user.password)
+                and user.role == UserRole.ADMIN
+            ):
+                request.session.update(
+                    {
+                        "token": create_access_token(
+                            data={"user_id": user.id, "token_type": "Bearer"}
+                        )
+                    }
+                )
                 return True
         return False
 
@@ -75,7 +85,6 @@ async def login(request: Request):
     auth_backend = AdminAuth()
     if await auth_backend.login(request):
         return {"message": "Successfully logged in."}
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password.")
-
-
-
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password."
+    )
