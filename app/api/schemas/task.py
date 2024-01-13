@@ -7,7 +7,6 @@ from app.api.db import TaskStatus
 
 
 class TaskSchema(BaseModel):
-    id: int
     name: str = Field(max_length=155)
     description: str | None = None
     created_at: datetime
