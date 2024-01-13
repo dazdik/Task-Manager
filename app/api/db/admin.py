@@ -13,7 +13,15 @@ router = APIRouter(include_in_schema=False)
 
 
 class UserModelView(ModelView, model=User):
-    column_list = [User.id, User.username, User.email, User.role, User.created_at]
+    column_list = [
+        User.id,
+        User.username,
+        User.email,
+        User.role,
+        User.created_at,
+        User.created_tasks,
+        User.user_detail,
+    ]
     column_sortable_list = [User.id]
     column_searchable_list = [User.username, User.role]
 
@@ -26,6 +34,9 @@ class TaskModelView(ModelView, model=Task):
         Task.created_at,
         Task.status,
         Task.urgency,
+        Task.creator_id,
+        Task.task_detail,
+        Task.creator,
     ]
     column_sortable_list = [Task.id, Task.created_at]
     column_searchable_list = [Task.name]
