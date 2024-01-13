@@ -2,8 +2,13 @@ from datetime import datetime
 from enum import Enum as PyEnum
 
 from sqlalchemy import Enum, ForeignKey, String, Text, UniqueConstraint, func
-from sqlalchemy.orm import (DeclarativeBase, Mapped, declared_attr,
-                            mapped_column, relationship)
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    declared_attr,
+    mapped_column,
+    relationship,
+)
 
 
 class UserRole(PyEnum):
@@ -41,6 +46,7 @@ class UserTasksAssociation(Base):
     )
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"))
+    is_executor: Mapped[bool] = mapped_column(default=False)
 
     user: Mapped["User"] = relationship(back_populates="user_detail")
     task: Mapped["Task"] = relationship(back_populates="task_detail")
@@ -56,6 +62,9 @@ class User(Base):
     )
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole), default=UserRole.USER.name, server_default="USER"
+    )
+    created_tasks: Mapped[list["Task"]] = relationship(
+        back_populates="creator", primaryjoin="User.id==Task.creator_id"
     )
     user_detail: Mapped[list["UserTasksAssociation"]] = relationship(
         back_populates="user"
@@ -73,7 +82,9 @@ class Task(Base):
     status: Mapped[TaskStatus] = mapped_column(
         Enum(TaskStatus), default=TaskStatus.CREATED.name, server_default="CREATED"
     )
+    creator_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
     task_detail: Mapped[list["UserTasksAssociation"]] = relationship(
         back_populates="task"
     )
+    creator: Mapped["User"] = relationship(back_populates="created_tasks")
