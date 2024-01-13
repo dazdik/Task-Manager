@@ -9,7 +9,8 @@ from sqladmin import Admin
 from app.api.db.admin import (
     UserModelView,
     TaskModelView,
-    UserTasksAssociationModelView, AdminAuth,
+    UserTasksAssociationModelView,
+    AdminAuth,
 )
 from app.api.db.settings_db import settings
 
@@ -27,24 +28,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-# @app.middleware("http")
-# async def auth_middleware(
-#     request: Request, call_next, user: User = Depends(get_current_user)
-# ):
-#     if request.url.path.startswith("/admin"):
-#         if not user and user.role != UserRole.ADMIN:
-#             raise HTTPException(
-#                 status_code=status.HTTP_403_FORBIDDEN, detail="Access Denied"
-#             )
-#
-#     response = await call_next(request)
-#     return response
-
-
 admin = Admin(
     app=app,
     session_maker=sessionmanager.session_maker,
-    authentication_backend=AdminAuth(settings.AUTH.KEY)
+    authentication_backend=AdminAuth(settings.AUTH.KEY),
 )
 admin.add_view(UserModelView)
 admin.add_view(TaskModelView)
