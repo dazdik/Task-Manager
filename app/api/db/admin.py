@@ -6,10 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.requests import Request
 
-from app.api.db import User, Task, get_db_session
+from app.api.db import User, Task, get_db_session, sessionmanager
 from app.api.db.models import UserTasksAssociation, UserRole
-from app.api.endpoints.auth import create_access_token
-from app.api.endpoints.dependencies import get_current_user
+from app.api.db.settings_db import settings
+from app.api.endpoints.auth import create_access_token, verify_password
 
 
 router = APIRouter(include_in_schema=False)
@@ -43,17 +43,36 @@ class UserTasksAssociationModelView(ModelView, model=UserTasksAssociation):
     ]
 
 
-class AdminAuth(AuthenticationBackend):
+async def check_user(
+    username: str,
+    password: str,
+    session: AsyncSession = Depends(get_db_session),
+):
+    stmt = select(User).filter(username == User.username)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+    # print(user)
+    if not user:
+        return False
+    if not verify_password(password, user.password):
+        return False
+    return user
 
-    async def login(self, request: Request, session: AsyncSession = Depends(get_db_session)) -> bool:
+
+class AdminAuth(AuthenticationBackend):
+    async def login(self, request: Request) -> bool:
         form = await request.form()
         username, password = form["username"], form["password"]
 
-        stmt = select(User).filter(username == User.username)
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
-        if user and user.verify_password(password, user.password) and user.role == UserRole.ADMIN:
-            request.session.update({"token": create_access_token(data={'user_id': user.id, 'token_type': 'Bearer'})})
+        user = await check_user(username=username, password=password)
+        if user and user.role == UserRole.ADMIN:
+            request.session.update(
+                {
+                    "token": create_access_token(
+                        data={"user_id": user.id, "token_type": "Bearer"}
+                    )
+                }
+            )
             return True
         return False
 
@@ -70,11 +89,9 @@ class AdminAuth(AuthenticationBackend):
 
 
 @router.post("/login")
-async def login(request: Request, session: AsyncSession = Depends(get_db_session)):
-    auth_backend = AdminAuth()
-    if await auth_backend.login(request):
+async def login(request: Request):
+    if await AdminAuth.login(settings.AUTH.KEY, request):
         return {"message": "Successfully logged in."}
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password.")
-
-
-
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password."
+    )
