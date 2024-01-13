@@ -3,12 +3,10 @@ from functools import wraps
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.db import get_db_session, User
+from app.api.db import User, get_db_session
 from app.api.endpoints.auth import verify_access_token
-
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login/")
 

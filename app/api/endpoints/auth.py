@@ -1,19 +1,15 @@
 from datetime import datetime, timedelta
 
 import jwt
-
-from fastapi import Depends, status, HTTPException, APIRouter
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt import PyJWTError
 from passlib.context import CryptContext
 from sqlalchemy import select
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.db import User, get_db_session
 from app.api.db.settings_db import settings
-
-
 from app.api.schemas import DataToken, Token
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
