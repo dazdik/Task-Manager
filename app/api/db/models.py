@@ -46,10 +46,10 @@ class UserTasksAssociation(Base):
     )
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"))
+    is_executor: Mapped[bool] = mapped_column(default=False)
 
     user: Mapped["User"] = relationship(back_populates="user_detail")
     task: Mapped["Task"] = relationship(back_populates="task_detail")
-    is_executor: Mapped[bool] = mapped_column(default=False)
 
 
 class User(Base):
