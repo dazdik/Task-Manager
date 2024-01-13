@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.requests import Request
 
-from app.api.db import User, Task, get_db_session
+from app.api.db import User, Task, get_db_session, sessionmanager
 from app.api.db.models import UserTasksAssociation, UserRole
-from app.api.endpoints.auth import create_access_token
+from app.api.endpoints.auth import create_access_token, verify_password
 from app.api.endpoints.dependencies import get_current_user
 
 
@@ -44,17 +44,19 @@ class UserTasksAssociationModelView(ModelView, model=UserTasksAssociation):
 
 
 class AdminAuth(AuthenticationBackend):
+    async def login(self, request: Request) -> bool:
+        async with sessionmanager.session() as session:
+            form = await request.form()
+            username = form["username"]
+            password = form["password"]
 
-    async def login(self, request: Request, session: AsyncSession = Depends(get_db_session)) -> bool:
-        form = await request.form()
-        username, password = form["username"], form["password"]
-
-        stmt = select(User).filter(username == User.username)
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
-        if user and user.verify_password(password, user.password) and user.role == UserRole.ADMIN:
-            request.session.update({"token": create_access_token(data={'user_id': user.id, 'token_type': 'Bearer'})})
-            return True
+            stmt = select(User).filter(User.username == username)
+            result = await session.execute(stmt)
+            user = result.scalar_one_or_none()
+            print(user.role, user.password, password, user.username, sep='\n')
+            if user and verify_password(password, user.password) and user.role == UserRole.ADMIN:
+                request.session.update({"token": create_access_token(data={'user_id': user.id, 'token_type': 'Bearer'})})
+                return True
         return False
 
     async def logout(self, request: Request) -> bool:
@@ -63,14 +65,13 @@ class AdminAuth(AuthenticationBackend):
 
     async def authenticate(self, request: Request) -> bool:
         token = request.session.get("token")
-        print(token)
         if not token:
             return False
         return True
 
 
 @router.post("/login")
-async def login(request: Request, session: AsyncSession = Depends(get_db_session)):
+async def login(request: Request):
     auth_backend = AdminAuth()
     if await auth_backend.login(request):
         return {"message": "Successfully logged in."}
