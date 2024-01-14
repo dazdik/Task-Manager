@@ -44,12 +44,14 @@ class UserTasksAssociation(Base):
             name="unique_user_task",
         ),
     )
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
     is_executor: Mapped[bool] = mapped_column(default=False)
 
     user: Mapped["User"] = relationship(back_populates="user_detail")
-    task: Mapped["Task"] = relationship(back_populates="task_detail")
+    task: Mapped["Task"] = relationship(
+        back_populates="task_detail", cascade="all, delete"
+    )
 
 
 class User(Base):
@@ -85,6 +87,6 @@ class Task(Base):
     creator_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
     task_detail: Mapped[list["UserTasksAssociation"]] = relationship(
-        back_populates="task"
+        back_populates="task", cascade="all, delete", passive_deletes=True
     )
     creator: Mapped["User"] = relationship(back_populates="created_tasks")

@@ -1,8 +1,12 @@
 import contextlib
 from typing import AsyncIterator
 
-from sqlalchemy.ext.asyncio import (AsyncConnection, AsyncSession,
-                                    async_sessionmaker, create_async_engine)
+from sqlalchemy.ext.asyncio import (
+    AsyncConnection,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from app.api.db.settings_db import settings
 
@@ -11,6 +15,8 @@ db_url: str = (
     f"{settings.DB.PASSWORD}@{settings.DB.HOSTNAME}:"
     f"{settings.DB.PORT}/{settings.DB.NAME}"
 )
+
+print(db_url)
 
 
 class DBSessionManager:
@@ -58,7 +64,7 @@ class DBSessionManager:
             await session.close()
 
 
-sessionmanager = DBSessionManager(url=db_url, echo=False)
+sessionmanager = DBSessionManager(url=db_url, echo=True)
 
 
 async def get_db_session():
