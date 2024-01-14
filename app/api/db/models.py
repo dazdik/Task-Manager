@@ -26,6 +26,7 @@ class TaskStatus(PyEnum):
     FINISHED = "finished"
 
 
+
 class Base(DeclarativeBase):
     __abstract__ = True
 
@@ -53,6 +54,9 @@ class UserTasksAssociation(Base):
         back_populates="task_detail", cascade="all, delete"
     )
 
+    def __str__(self):
+        return f'{self.user_id} - {self.task_id}'
+
 
 class User(Base):
     username: Mapped[str] = mapped_column(unique=True)
@@ -72,6 +76,9 @@ class User(Base):
         back_populates="user"
     )
 
+    def __str__(self):
+        return f'{self.username}: {self.role}'
+
 
 class Task(Base):
     name: Mapped[str] = mapped_column(String(155))
@@ -90,3 +97,6 @@ class Task(Base):
         back_populates="task", cascade="all, delete", passive_deletes=True
     )
     creator: Mapped["User"] = relationship(back_populates="created_tasks")
+
+    def __str__(self):
+        return f'{self.name}'
