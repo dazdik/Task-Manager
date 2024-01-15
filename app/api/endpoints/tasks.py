@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload, aliased
 
 from app.api.db import UserRole, get_db_session, Task
-from app.api.db.models import UserTasksAssociation, User
-from app.api.endpoints.dependencies import check_role
+from app.api.db.models import UserTasksAssociation, User, TaskStatus
+from app.api.endpoints.dependencies import check_role, check_status
 from app.api.schemas import CreateTaskSchema, SuccessResponse
 from app.api.endpoints.dependencies import get_current_user
 
@@ -30,7 +30,7 @@ async def create_task(
     )
 
     session.add(new_task)
-    await session.flush()  # Flush, чтобы получить new_task.id
+    await session.flush()
 
     list_user_tasks = [
         UserTasksAssociation(user_id=user_id, task_id=new_task.id)
@@ -94,3 +94,28 @@ async def delete_task_id(
         await session.commit()
         return {"massage": f'{user.username} успешно удалил задачу {task}'}
     return {"massage": f'Такой задачи не существует или у вас нет прав'}
+
+
+@router.patch("/{task_id}")
+@check_status(TaskStatus.CREATED)
+@check_role(UserRole.USER)
+async def update_task(
+        task_id: int,
+        user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_db_session)):
+    res = await session.execute(
+        select(User)
+        .options(
+            joinedload(User.user_detail).joinedload(UserTasksAssociation.task),
+        )
+        .where(User.id == user.id)
+    )
+    executor = res.scalars().first()
+    tasks = [i.task_id for i in executor.user_detail]
+    if task_id in tasks:
+        stmt = await session.execute(select(Task).where(Task.id == task_id))
+        res = stmt.scalar_one_or_none()
+        res.status = TaskStatus.AT_WORK
+        session.add(res)
+        await session.commit()
+        return {"massage": f"раб {user.username} принял задачу в работу"}

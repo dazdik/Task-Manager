@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.db import User, get_db_session
+from app.api.db import User, get_db_session, Task
 from app.api.endpoints.auth import verify_access_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login/")
@@ -42,4 +42,21 @@ def check_role(*roles):
 
         return wrapper
 
+    return decorator
+
+
+def check_status(*statuses):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            task: Task = kwargs.get("task_id")
+            stmt = await kwargs.get('session').execute(select(Task).where(Task.id == task))
+            res = stmt.scalar_one_or_none()
+            if res.status not in statuses:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="This status not allowed",
+                )
+            return await func(*args, **kwargs)
+        return wrapper
     return decorator
