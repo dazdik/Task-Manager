@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import TaskStatus, User, UserTasksAssociation
-from app.api.endpoints.dependencies import check_role, check_status, get_current_user
+from app.api.endpoints.dependencies import (check_role, check_role_for_status,
+                                            check_status, get_current_user)
 from app.api.schemas import CreateTaskSchema, SuccessResponse
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -97,26 +98,43 @@ async def delete_task_id(
 
 
 @router.patch("/{task_id}")
-@check_status(TaskStatus.CREATED)
-@check_role(UserRole.USER)
+@check_role(UserRole.USER, UserRole.MANAGER)
 async def update_task(
     task_id: int,
+    task_status: TaskStatus,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
-    res = await session.execute(
-        select(User)
-        .options(
-            joinedload(User.user_detail).joinedload(UserTasksAssociation.task),
+    if task_status not in await check_role_for_status(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This status not allowed",
         )
-        .where(User.id == user.id)
-    )
-    executor = res.scalars().first()
-    tasks = [i.task_id for i in executor.user_detail]
+    if user.role == UserRole.USER:
+        res_executor = await session.execute(
+            select(User)
+            .options(
+                joinedload(User.user_detail).joinedload(UserTasksAssociation.task),
+            )
+            .where(User.id == user.id)
+        )
+
+        executor = res_executor.scalars().first()
+        tasks = [i.task_id for i in executor.user_detail]
+
+    else:
+        res_creator = await session.execute(
+            select(User)
+            .options(joinedload(User.created_tasks))
+            .where(User.id == user.id)
+        )
+        creator = res_creator.scalars().first()
+        tasks = [task.id for task in creator.created_tasks]
+
     if task_id in tasks:
         stmt = await session.execute(select(Task).where(Task.id == task_id))
         res = stmt.scalar_one_or_none()
-        res.status = TaskStatus.AT_WORK
+        res.status = task_status
         session.add(res)
         await session.commit()
         return {"massage": f"Slave {user.username} accepted the task"}
