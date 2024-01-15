@@ -39,9 +39,7 @@ def check_role(*roles):
                     detail="The user doesn't have enough privileges",
                 )
             return await func(*args, **kwargs)
-
         return wrapper
-
     return decorator
 
 
