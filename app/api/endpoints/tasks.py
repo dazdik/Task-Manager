@@ -87,10 +87,10 @@ async def delete_task_id(
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_db_session)):
 
-    result = await session.execute(select(Task).where(Task.id == task_id))
+    result = await session.execute(select(Task).where(Task.id == task_id, Task.creator_id == user.id))
     task = result.scalar_one_or_none()
     if task:
         await session.delete(task)
         await session.commit()
         return {"massage": f'{user.username} успешно удалил задачу {task}'}
-    return {"massage": f'Такой задачи не существует'}
+    return {"massage": f'Такой задачи не существует или у вас нет прав'}
