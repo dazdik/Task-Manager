@@ -16,8 +16,6 @@ db_url: str = (
     f"{settings.DB.PORT}/{settings.DB.NAME}"
 )
 
-print(db_url)
-
 
 class DBSessionManager:
     def __init__(self, url: str, echo: bool = False):
