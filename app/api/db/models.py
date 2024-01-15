@@ -26,7 +26,6 @@ class TaskStatus(PyEnum):
     FINISHED = "finished"
 
 
-
 class Base(DeclarativeBase):
     __abstract__ = True
 
