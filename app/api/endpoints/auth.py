@@ -55,11 +55,11 @@ async def login(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Юзера не существует"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User does not exist"
         )
     if not verify_password(userdetails.password, user.password):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный пароль"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect password"
         )
     access_token = create_access_token(data={"user_id": user.id})
     return {"access_token": access_token, "token_type": "Bearer"}

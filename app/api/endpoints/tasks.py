@@ -1,14 +1,12 @@
 from fastapi import APIRouter, Depends, status
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload, aliased
+from sqlalchemy.orm import joinedload
 
-from app.api.db import UserRole, get_db_session, Task
-from app.api.db.models import UserTasksAssociation, User, TaskStatus
-from app.api.endpoints.dependencies import check_role, check_status
+from app.api.db import Task, UserRole, get_db_session
+from app.api.db.models import TaskStatus, User, UserTasksAssociation
+from app.api.endpoints.dependencies import check_role, check_status, get_current_user
 from app.api.schemas import CreateTaskSchema, SuccessResponse
-from app.api.endpoints.dependencies import get_current_user
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -83,26 +81,29 @@ async def get_task_by_id(task_id: int, session: AsyncSession = Depends(get_db_se
 @router.delete("/{task_id}")
 @check_role(UserRole.MANAGER)
 async def delete_task_id(
-        task_id: int,
-        user: User = Depends(get_current_user),
-        session: AsyncSession = Depends(get_db_session)):
-
-    result = await session.execute(select(Task).where(Task.id == task_id, Task.creator_id == user.id))
+    task_id: int,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    result = await session.execute(
+        select(Task).where(Task.id == task_id, Task.creator_id == user.id)
+    )
     task = result.scalar_one_or_none()
     if task:
         await session.delete(task)
         await session.commit()
-        return {"massage": f'{user.username} успешно удалил задачу {task}'}
-    return {"massage": f'Такой задачи не существует или у вас нет прав'}
+        return {"massage": f"{user.username} successfully deleted the task {task}"}
+    return {"massage": f"This task does not exist or you do not have permissions"}
 
 
 @router.patch("/{task_id}")
 @check_status(TaskStatus.CREATED)
 @check_role(UserRole.USER)
 async def update_task(
-        task_id: int,
-        user: User = Depends(get_current_user),
-        session: AsyncSession = Depends(get_db_session)):
+    task_id: int,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
     res = await session.execute(
         select(User)
         .options(
@@ -118,4 +119,4 @@ async def update_task(
         res.status = TaskStatus.AT_WORK
         session.add(res)
         await session.commit()
-        return {"massage": f"раб {user.username} принял задачу в работу"}
+        return {"massage": f"Slave {user.username} accepted the task"}

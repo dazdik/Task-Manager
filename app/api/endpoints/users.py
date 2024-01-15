@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.api.db import User, UserRole, get_db_session
-from app.api.db.models import UserTasksAssociation, Task
+from app.api.db.models import Task, UserTasksAssociation
 from app.api.endpoints.dependencies import check_role, get_current_user
 from app.api.schemas import CreateUserSchema
 
