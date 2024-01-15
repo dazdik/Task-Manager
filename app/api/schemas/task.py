@@ -1,6 +1,7 @@
+from pydantic import BaseModel, Field
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from app.api.db import TaskStatus
 
 
 class CreateTaskSchema(BaseModel):

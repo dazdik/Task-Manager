@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.db import Task, TaskStatus, User, UserRole, get_db_session
+from app.api.db import User, get_db_session
 from app.api.endpoints.auth import verify_access_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login/")
@@ -16,7 +16,7 @@ async def get_current_user(
 ):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Failed to verify credentials",
+        detail="Не удалось проверить учетные данные",
         headers={"WWW-Authenticate": "Bearer"},
     )
     token = verify_access_token(
@@ -43,11 +43,3 @@ def check_role(*roles):
         return wrapper
 
     return decorator
-
-
-async def check_role_for_status(user: User):
-    status_for_user = {
-        UserRole.USER: [TaskStatus.AT_WORK, TaskStatus.ON_CHECK],
-        UserRole.MANAGER: [TaskStatus.FROZEN, TaskStatus.CANCEL, TaskStatus.FINISHED],
-    }
-    return status_for_user[user.role]
