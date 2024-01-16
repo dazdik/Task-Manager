@@ -5,8 +5,12 @@ from sqlalchemy.orm import joinedload
 
 from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import TaskStatus, User, UserTasksAssociation
-from app.api.endpoints.dependencies import (check_role, check_role_for_status,
-                                            get_current_user, send_email_async)
+from app.api.endpoints.dependencies import (
+    check_role,
+    check_role_for_status,
+    get_current_user,
+    send_email_async,
+)
 from app.api.schemas import CreateTaskSchema, SuccessResponse
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -20,7 +24,7 @@ async def create_task(
     task_data: CreateTaskSchema,
     background_tasks: BackgroundTasks,
     user=Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session)
+    session: AsyncSession = Depends(get_db_session),
 ):
     new_task = Task(
         name=task_data.name,
@@ -32,17 +36,25 @@ async def create_task(
     session.add(new_task)
     await session.flush()
 
-    list_user_tasks = [
-    ]
+    list_user_tasks = []
     for user_id in task_data.executors_id:
-        list_user_tasks.append(UserTasksAssociation(user_id=user_id, task_id=new_task.id))
         stmt = await session.execute(select(User).where(User.id == user_id))
         executor = stmt.scalar_one_or_none()
+
+        if executor.role == UserRole.MANAGER:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform the task",
+            )
+        list_user_tasks.append(
+            UserTasksAssociation(user_id=user_id, task_id=new_task.id)
+        )
+
         background_tasks.add_task(
             send_email_async,
             f"Created task {new_task.name}",
             f"{executor.username} you have new task",
-            executor.email
+            executor.email,
         )
 
     session.add_all(list_user_tasks)
@@ -66,8 +78,8 @@ async def get_task_by_id(task_id: int, session: AsyncSession = Depends(get_db_se
     task = result.scalars().first()
     if not task:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="This task not found")
+            status_code=status.HTTP_404_NOT_FOUND, detail="This task not found"
+        )
     task_data = {
         "id": task.id,
         "name": task.name,
@@ -150,6 +162,3 @@ async def update_task(
         session.add(res)
         await session.commit()
         return {"massage": f"Slave {user.username} accepted the task"}
-
-
-

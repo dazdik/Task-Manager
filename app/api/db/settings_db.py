@@ -16,9 +16,15 @@ class AuthSettings(BaseModel):
     KEY: str
 
 
+class EmailSMTP(BaseModel):
+    NAME: str
+    PASS: str
+
+
 class Settings(BaseSettings):
     DB: PostgresqlSettings
     AUTH: AuthSettings
+    EMAIL: EmailSMTP
 
     model_config = SettingsConfigDict(
         env_file=dotenv.find_dotenv(".env"),
