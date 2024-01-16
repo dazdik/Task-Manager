@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.api.db import User, UserRole, get_db_session
-from app.api.db.models import Task, UserTasksAssociation
+from app.api.db.models import UserTasksAssociation
 from app.api.endpoints.dependencies import check_role, get_current_user
 from app.api.schemas import CreateUserSchema
 
@@ -85,6 +85,7 @@ async def get_user_by_id(user_id: int, session: AsyncSession = Depends(get_db_se
             }
             for task in user.created_tasks
         ],
-        "in work": [assoc.task.id for assoc in user.user_detail],
+        "in work": [{'id': assoc.task.id, 'name': assoc.task.name} for assoc in user.user_detail],
     }
     return user_data
+

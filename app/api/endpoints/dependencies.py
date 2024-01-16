@@ -1,11 +1,13 @@
+from email.message import EmailMessage
 from functools import wraps
 
+import aiosmtplib
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.db import Task, TaskStatus, User, UserRole, get_db_session
+from app.api.db import TaskStatus, User, UserRole, get_db_session
 from app.api.endpoints.auth import verify_access_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login/")
@@ -51,3 +53,30 @@ async def check_role_for_status(user: User):
         UserRole.MANAGER: [TaskStatus.FROZEN, TaskStatus.CANCEL, TaskStatus.FINISHED],
     }
     return status_for_user[user.role]
+
+
+async def send_email_async(subject: str, body: str, to_email: str):
+    message = EmailMessage()
+    message["From"] = "alberv0r@yandex.ru"
+    message["To"] = to_email
+    message["Subject"] = subject
+    message.set_content(body)
+
+    await aiosmtplib.send(
+        message,
+        hostname="smtp.yandex.ru",
+        port=465,
+        username="alberv0r@yandex.ru",
+        password="hnimqbfsiartqzqk",
+        use_tls=True
+    )
+
+
+# async def send_notification(background_tasks: BackgroundTasks, user_email: str):
+#     background_tasks.add_task(
+#         send_email_async,
+#         "Привет",
+#         "Текст письма",
+#         user_email
+#     )
+#     return {"message": "Notification will be sent in the background"}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import TaskStatus, User, UserTasksAssociation
 from app.api.endpoints.dependencies import (check_role, check_role_for_status,
-                                            check_status, get_current_user)
+                                            get_current_user, send_email_async)
 from app.api.schemas import CreateTaskSchema, SuccessResponse
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -18,8 +18,9 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 @check_role(UserRole.MANAGER)
 async def create_task(
     task_data: CreateTaskSchema,
+    background_tasks: BackgroundTasks,
     user=Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
+    session: AsyncSession = Depends(get_db_session)
 ):
     new_task = Task(
         name=task_data.name,
@@ -32,9 +33,17 @@ async def create_task(
     await session.flush()
 
     list_user_tasks = [
-        UserTasksAssociation(user_id=user_id, task_id=new_task.id)
-        for user_id in task_data.executors_id
     ]
+    for user_id in task_data.executors_id:
+        list_user_tasks.append(UserTasksAssociation(user_id=user_id, task_id=new_task.id))
+        stmt = await session.execute(select(User).where(User.id == user_id))
+        executor = stmt.scalar_one_or_none()
+        background_tasks.add_task(
+            send_email_async,
+            f"Created task {new_task.name}",
+            f"{executor.username} you have new task",
+            executor.email
+        )
 
     session.add_all(list_user_tasks)
     await session.commit()
@@ -55,6 +64,10 @@ async def get_task_by_id(task_id: int, session: AsyncSession = Depends(get_db_se
         .where(Task.id == task_id)
     )
     task = result.scalars().first()
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This task not found")
     task_data = {
         "id": task.id,
         "name": task.name,
@@ -118,7 +131,6 @@ async def update_task(
             )
             .where(User.id == user.id)
         )
-
         executor = res_executor.scalars().first()
         tasks = [i.task_id for i in executor.user_detail]
 
@@ -138,3 +150,6 @@ async def update_task(
         session.add(res)
         await session.commit()
         return {"massage": f"Slave {user.username} accepted the task"}
+
+
+
