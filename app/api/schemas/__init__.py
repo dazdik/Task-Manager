@@ -4,7 +4,8 @@ __all__ = (
     "DataToken",
     "CreateTaskSchema",
     "SuccessResponse",
+    "TaskUpdatePartial",
 )
 
-from .task import CreateTaskSchema, SuccessResponse
+from .task import CreateTaskSchema, SuccessResponse, TaskUpdatePartial
 from .user import CreateUserSchema, DataToken, Token

@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.api.db import TaskStatus
+
 
 class CreateTaskSchema(BaseModel):
     name: str = Field(max_length=155)
@@ -14,3 +16,10 @@ class CreateTaskSchema(BaseModel):
 class SuccessResponse(BaseModel):
     status: str
     message: str
+
+
+class TaskUpdatePartial(BaseModel):
+    description: str | None = None
+    urgency: bool | None = None
+    status: TaskStatus | None = None
+    executors_id: list[int] | None = None

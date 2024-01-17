@@ -4,14 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.api.db import Task, UserRole, get_db_session
-from app.api.db.models import TaskStatus, User, UserTasksAssociation
-from app.api.endpoints.dependencies import (
-    check_role,
-    check_role_for_status,
-    get_current_user,
-    send_email_async,
-)
-from app.api.schemas import CreateTaskSchema, SuccessResponse
+from app.api.db.models import User, UserTasksAssociation
+from app.api.endpoints.dependencies import (check_role, check_role_for_status,
+                                            get_current_user, send_email_async)
+from app.api.schemas import (CreateTaskSchema, SuccessResponse,
+                             TaskUpdatePartial)
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -126,39 +123,71 @@ async def delete_task_id(
 @check_role(UserRole.USER, UserRole.MANAGER)
 async def update_task(
     task_id: int,
-    task_status: TaskStatus,
+    task_data: TaskUpdatePartial,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
-    if task_status not in await check_role_for_status(user):
+    """
+    Обновление таски:
+    1. Получение таски и проверка ее на существование
+    2. Проверка пользователя, отправившего запрос, на роль и его прав
+    3. Юзер может только менять статус, а менеджер может менять все, что пришло в теле запроса
+    """
+    stmt = await session.execute(
+        select(Task)
+        .options(
+            joinedload(Task.creator),
+            joinedload(Task.task_detail).joinedload(UserTasksAssociation.user),
+        )
+        .where(Task.id == task_id)
+    )
+    task = stmt.scalars().first()
+
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if task_data.status not in await check_role_for_status(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This status not allowed",
         )
-    if user.role == UserRole.USER:
-        res_executor = await session.execute(
-            select(User)
-            .options(
-                joinedload(User.user_detail).joinedload(UserTasksAssociation.task),
-            )
-            .where(User.id == user.id)
+    executors_id = [executor.user_id for executor in task.task_detail]
+
+    if task_data.executors_id:
+        stmt_user = await session.execute(
+            select(User).where(User.role == UserRole.USER)
         )
-        executor = res_executor.scalars().first()
-        tasks = [i.task_id for i in executor.user_detail]
+        res = [user.id for user in stmt_user.scalars()]
+        for executor_id in task_data.executors_id:
+            if executor_id not in res:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+                )
+
+    if user.role == UserRole.USER:
+        if (
+            task_data.description is not None
+            or task_data.urgency is not None
+            or task_data.executors_id
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are only allowed to update the task status",
+            )
+
+        task.status = task_data.status
 
     else:
-        res_creator = await session.execute(
-            select(User)
-            .options(joinedload(User.created_tasks))
-            .where(User.id == user.id)
-        )
-        creator = res_creator.scalars().first()
-        tasks = [task.id for task in creator.created_tasks]
+        for name, value in task_data.model_dump(exclude_unset=True).items():
+            if name == "executors_id":
+                list_of_new_executors = [
+                    UserTasksAssociation(user_id=user_id, task_id=task.id)
+                    for user_id in value
+                    if user_id not in executors_id
+                ]
+                session.add_all(list_of_new_executors)
+            setattr(task, name, value)
 
-    if task_id in tasks:
-        stmt = await session.execute(select(Task).where(Task.id == task_id))
-        res = stmt.scalar_one_or_none()
-        res.status = task_status
-        session.add(res)
-        await session.commit()
-        return {"massage": f"Slave {user.username} accepted the task"}
+    await session.commit()
+
+    return {"massage": f"User {user.username} update the task"}
