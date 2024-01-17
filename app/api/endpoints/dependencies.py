@@ -71,12 +71,3 @@ async def send_email_async(subject: str, body: str, to_email: str):
         use_tls=True
     )
 
-
-# async def send_notification(background_tasks: BackgroundTasks, user_email: str):
-#     background_tasks.add_task(
-#         send_email_async,
-#         "Привет",
-#         "Текст письма",
-#         user_email
-#     )
-#     return {"message": "Notification will be sent in the background"}
