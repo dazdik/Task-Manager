@@ -1,14 +1,22 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
 
 from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import User, UserTasksAssociation
-from app.api.endpoints.dependencies import (check_role, check_role_for_status,
-                                            get_current_user, send_email_async)
-from app.api.schemas import (CreateTaskSchema, SuccessResponse,
-                             TaskUpdatePartial)
+from app.api.endpoints.dependencies import (
+    check_role,
+    check_role_for_status,
+    get_current_user,
+    send_email_async,
+    get_task_by_id,
+)
+from app.api.schemas import (
+    CreateTaskSchema,
+    SuccessResponse,
+    TaskUpdatePartial,
+    TaskResponse,
+)
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -23,6 +31,8 @@ async def create_task(
     user=Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    """Создание таски с исполнителями с ролью юзера."""
+
     new_task = Task(
         name=task_data.name,
         description=task_data.description,
@@ -62,21 +72,11 @@ async def create_task(
     }
 
 
-@router.get("/{task_id}")
-async def get_task_by_id(task_id: int, session: AsyncSession = Depends(get_db_session)):
-    result = await session.execute(
-        select(Task)
-        .options(
-            joinedload(Task.creator),
-            joinedload(Task.task_detail).joinedload(UserTasksAssociation.user),
-        )
-        .where(Task.id == task_id)
-    )
-    task = result.scalars().first()
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="This task not found"
-        )
+@router.get("/{task_id}", response_model=TaskResponse)
+async def get_task_id(task_id: int, session: AsyncSession = Depends(get_db_session)):
+    """Получение таски по айди с информацией о создателе задачи и исполнителе/исполнителях."""
+
+    task = await get_task_by_id(task_id, session)
     task_data = {
         "id": task.id,
         "name": task.name,
@@ -108,6 +108,7 @@ async def delete_task_id(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    """Удаление менеджером таски, в которой он является создателем."""
     result = await session.execute(
         select(Task).where(Task.id == task_id, Task.creator_id == user.id)
     )
@@ -133,18 +134,7 @@ async def update_task(
     2. Проверка пользователя, отправившего запрос, на роль и его прав
     3. Юзер может только менять статус, а менеджер может менять все, что пришло в теле запроса
     """
-    stmt = await session.execute(
-        select(Task)
-        .options(
-            joinedload(Task.creator),
-            joinedload(Task.task_detail).joinedload(UserTasksAssociation.user),
-        )
-        .where(Task.id == task_id)
-    )
-    task = stmt.scalars().first()
-
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+    task = await get_task_by_id(task_id, session)
 
     if task_data.status not in await check_role_for_status(user):
         raise HTTPException(

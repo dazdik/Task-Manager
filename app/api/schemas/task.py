@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.api.db import TaskStatus
 
@@ -23,3 +23,30 @@ class TaskUpdatePartial(BaseModel):
     urgency: bool | None = None
     status: TaskStatus | None = None
     executors_id: list[int] | None = None
+
+
+class UserBase(BaseModel):
+    id: int
+    username: str
+    email: str
+
+
+class TaskExecutor(UserBase):
+    pass
+
+
+class TaskCreator(UserBase):
+    pass
+
+
+class TaskResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    description: str
+    created_at: datetime
+    urgency: bool
+    status: str
+    creator: TaskCreator
+    executors: list[TaskExecutor]
