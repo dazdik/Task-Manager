@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.db import TaskStatus
 
@@ -47,6 +47,19 @@ class TaskResponse(BaseModel):
     description: str
     created_at: datetime
     urgency: bool
-    status: str
+    status: TaskStatus
     creator: TaskCreator
     executors: list[TaskExecutor]
+
+
+class TaskInWork(BaseModel):
+    id: int
+    name: str
+
+
+class TaskUserResponse(BaseModel):
+    id: int
+    name: str
+    created_at: datetime
+    urgency: bool
+    status: TaskStatus

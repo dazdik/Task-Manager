@@ -4,19 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import User, UserTasksAssociation
-from app.api.endpoints.dependencies import (
-    check_role,
-    check_role_for_status,
-    get_current_user,
-    send_email_async,
-    get_task_by_id,
-)
-from app.api.schemas import (
-    CreateTaskSchema,
-    SuccessResponse,
-    TaskUpdatePartial,
-    TaskResponse,
-)
+from app.api.endpoints.dependencies import (check_role, check_role_for_status,
+                                            get_current_user, get_task_by_id,
+                                            send_email_async)
+from app.api.schemas import (CreateTaskSchema, SuccessResponse, TaskCreator,
+                             TaskExecutor, TaskResponse, TaskUpdatePartial)
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -77,27 +69,25 @@ async def get_task_id(task_id: int, session: AsyncSession = Depends(get_db_sessi
     """Получение таски по айди с информацией о создателе задачи и исполнителе/исполнителях."""
 
     task = await get_task_by_id(task_id, session)
-    task_data = {
-        "id": task.id,
-        "name": task.name,
-        "description": task.description,
-        "created_at": task.created_at,
-        "urgency": task.urgency,
-        "status": task.status,
-        "creator": {
-            "id": task.creator.id,
-            "username": task.creator.username,
-            "email": task.creator.email,
-        },
-        "executors": [
-            {
-                "id": assoc.user.id,
-                "username": assoc.user.username,
-                "email": assoc.user.email,
-            }
-            for assoc in task.task_detail
+    task_data = TaskResponse(
+        id=task.id,
+        name=task.name,
+        description=task.description,
+        created_at=task.created_at,
+        urgency=task.urgency,
+        status=task.status,
+        creator=TaskCreator(
+            id=task.creator.id, username=task.creator.username, email=task.creator.email
+        ),
+        executors=[
+            TaskExecutor(
+                id=executor.user.id,
+                username=executor.user.username,
+                email=executor.user.email,
+            )
+            for executor in task.task_detail
         ],
-    }
+    )
     return task_data
 
 

@@ -7,7 +7,8 @@ from sqlalchemy.orm import joinedload
 from app.api.db import User, UserRole, get_db_session
 from app.api.db.models import UserTasksAssociation
 from app.api.endpoints.dependencies import check_role, get_current_user
-from app.api.schemas import CreateUserSchema
+from app.api.schemas import (CreateUserSchema, TaskInWork, TaskUserResponse,
+                             UserResponse)
 
 router = APIRouter(prefix="/users", tags=["Users"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -75,24 +76,47 @@ async def get_user_by_id(user_id: int, session: AsyncSession = Depends(get_db_se
         .where(User.id == user_id)
     )
     user = res.scalars().first()
-    user_data = {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "created_at": user.created_at,
-        "role": user.role,
-        "created_tasks": [
-            {
-                "id": task.id,
-                "name": task.name,
-                "created_at": task.created_at,
-                "urgency": task.urgency,
-                "status": task.status,
-            }
+    user_data = UserResponse(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        created_at=user.created_at,
+        role=user.role,
+        created_tasks=[
+            TaskUserResponse(
+                id=task.id,
+                name=task.name,
+                created_at=task.created_at,
+                urgency=task.urgency,
+                status=task.status,
+            )
             for task in user.created_tasks
         ],
-        "in work": [
-            {"id": assoc.task.id, "name": assoc.task.name} for assoc in user.user_detail
+        in_work=[
+            TaskInWork(id=assoc.task.id, name=assoc.task.name)
+            for assoc in user.user_detail
         ],
-    }
+    )
+
+    #
+    # user_data = {
+    #     "id": user.id,
+    #     "username": user.username,
+    #     "email": user.email,
+    #     "created_at": user.created_at,
+    #     "role": user.role,
+    #     "created_tasks": [
+    #         {
+    #             "id": task.id,
+    #             "name": task.name,
+    #             "created_at": task.created_at,
+    #             "urgency": task.urgency,
+    #             "status": task.status,
+    #         }
+    #         for task in user.created_tasks
+    #     ],
+    #     "in work": [
+    #         {"id": assoc.task.id, "name": assoc.task.name} for assoc in user.user_detail
+    #     ],
+    # }
     return user_data

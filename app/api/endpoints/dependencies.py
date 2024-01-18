@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.api.db import TaskStatus, User, UserRole, get_db_session, Task
+from app.api.db import Task, TaskStatus, User, UserRole, get_db_session
 from app.api.db.models import UserTasksAssociation
 from app.api.db.settings_db import settings
 from app.api.endpoints.auth import verify_access_token

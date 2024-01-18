@@ -49,7 +49,7 @@ class UserTasksAssociation(Base):
     )
 
     def __str__(self):
-        return f'{self.user_id} - {self.task_id}'
+        return f"{self.user_id} - {self.task_id}"
 
 
 class User(Base):
@@ -71,7 +71,7 @@ class User(Base):
     )
 
     def __str__(self):
-        return f'{self.username}: {self.role}'
+        return f"{self.username}: {self.role}"
 
 
 class Task(Base):
@@ -93,4 +93,4 @@ class Task(Base):
     creator: Mapped["User"] = relationship(back_populates="created_tasks")
 
     def __str__(self):
-        return f'{self.name}'
+        return f"{self.name}"
