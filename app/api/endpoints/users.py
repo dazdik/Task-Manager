@@ -97,26 +97,4 @@ async def get_user_by_id(user_id: int, session: AsyncSession = Depends(get_db_se
             for assoc in user.user_detail
         ],
     )
-
-    #
-    # user_data = {
-    #     "id": user.id,
-    #     "username": user.username,
-    #     "email": user.email,
-    #     "created_at": user.created_at,
-    #     "role": user.role,
-    #     "created_tasks": [
-    #         {
-    #             "id": task.id,
-    #             "name": task.name,
-    #             "created_at": task.created_at,
-    #             "urgency": task.urgency,
-    #             "status": task.status,
-    #         }
-    #         for task in user.created_tasks
-    #     ],
-    #     "in work": [
-    #         {"id": assoc.task.id, "name": assoc.task.name} for assoc in user.user_detail
-    #     ],
-    # }
     return user_data

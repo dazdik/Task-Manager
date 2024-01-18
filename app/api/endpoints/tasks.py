@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, WebSocket
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,30 @@ from app.api.schemas import (CreateTaskSchema, SuccessResponse, TaskCreator,
                              TaskExecutor, TaskResponse, TaskUpdatePartial)
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
+
+
+active_websockets: list[WebSocket] = []
+
+
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    active_websockets.append(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # Здесь можно обрабатывать сообщения от клиентов, если это требуется
+    except Exception as e:
+        # Обработка исключений
+        print(f"Error: {e}")
+    finally:
+        active_websockets.remove(websocket)
+        await websocket.close()
+
+
+async def broadcast_message(message: str):
+    for connection in active_websockets:
+        await connection.send_text(message)
 
 
 @router.post(
@@ -58,6 +82,7 @@ async def create_task(
 
     session.add_all(list_user_tasks)
     await session.commit()
+    await broadcast_message(f"New task {new_task.name} created by {user.username}")
     return {
         "status": new_task.status,
         "message": f"Task {new_task.name} successfully created",
@@ -106,6 +131,7 @@ async def delete_task_id(
     if task:
         await session.delete(task)
         await session.commit()
+        await broadcast_message(f"Task {task_id} deleted by {user.username}")
         return {"massage": f"{user.username} successfully deleted the task {task}"}
     return {"massage": f"This task does not exist or you do not have permissions"}
 
@@ -169,5 +195,5 @@ async def update_task(
             setattr(task, name, value)
 
     await session.commit()
-
+    await broadcast_message(f"Task {task_id} updated by {user.username}")
     return {"massage": f"User {user.username} update the task"}
