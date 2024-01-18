@@ -21,6 +21,8 @@ def hash_pass(password: str):
 async def create_user(
     user_in: CreateUserSchema, session: AsyncSession = Depends(get_db_session)
 ):
+    """Создание аккаунта юзера."""
+
     hashed_pass = hash_pass(user_in.hashed_password)
 
     user = User(
@@ -37,6 +39,8 @@ async def create_user(
 
 @router.get("/all")
 async def get_users(session: AsyncSession = Depends(get_db_session)):
+    """Получение списка всех юзеров с краткой информацией."""
+
     stmt = await session.execute(select(User).order_by(User.id))
     users = stmt.scalars().all()
     users_without_passwords = []
@@ -60,6 +64,8 @@ async def get_me(user: User = Depends(get_current_user)):
 
 @router.get("/{user_id}")
 async def get_user_by_id(user_id: int, session: AsyncSession = Depends(get_db_session)):
+    """Получение информации о юзере с тасками, в которых он является исполнителем или создателем."""
+
     res = await session.execute(
         select(User)
         .options(
@@ -85,7 +91,8 @@ async def get_user_by_id(user_id: int, session: AsyncSession = Depends(get_db_se
             }
             for task in user.created_tasks
         ],
-        "in work": [{'id': assoc.task.id, 'name': assoc.task.name} for assoc in user.user_detail],
+        "in work": [
+            {"id": assoc.task.id, "name": assoc.task.name} for assoc in user.user_detail
+        ],
     }
     return user_data
-

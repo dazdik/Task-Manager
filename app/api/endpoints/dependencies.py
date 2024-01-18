@@ -6,8 +6,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
-from app.api.db import TaskStatus, User, UserRole, get_db_session
+from app.api.db import TaskStatus, User, UserRole, get_db_session, Task
+from app.api.db.models import UserTasksAssociation
 from app.api.db.settings_db import settings
 from app.api.endpoints.auth import verify_access_token
 
@@ -54,6 +56,23 @@ async def check_role_for_status(user: User):
         UserRole.MANAGER: [TaskStatus.FROZEN, TaskStatus.CANCEL, TaskStatus.FINISHED],
     }
     return status_for_user[user.role]
+
+
+async def get_task_by_id(task_id: int, session: AsyncSession):
+    result = await session.execute(
+        select(Task)
+        .options(
+            joinedload(Task.creator),
+            joinedload(Task.task_detail).joinedload(UserTasksAssociation.user),
+        )
+        .where(Task.id == task_id)
+    )
+    task = result.scalars().first()
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="This task not found"
+        )
+    return task
 
 
 async def send_email_async(subject: str, body: str, to_email: str):

@@ -50,6 +50,8 @@ async def login(
     userdetails: OAuth2PasswordRequestForm = Depends(),
     session: AsyncSession = Depends(get_db_session),
 ):
+    """Авторизация юзера."""
+
     stmt = select(User).filter(userdetails.username == User.username)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
