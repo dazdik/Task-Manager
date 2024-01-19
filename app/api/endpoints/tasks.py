@@ -1,6 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, WebSocket
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.websockets import WebSocketState
 
 from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import User, UserTasksAssociation
@@ -13,28 +14,51 @@ from app.api.schemas import (CreateTaskSchema, SuccessResponse, TaskCreator,
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 
-active_websockets: list[WebSocket] = []
+class WebSocketManager:
+    def __init__(self):
+        self.active_websockets: dict[int, list[WebSocket]] = {}
+        self.user_websockets: dict[int, WebSocket] = {}
+
+    async def connect(self, user_id: int, task_id: int, websocket: WebSocket):
+        self.active_websockets.get(task_id, []).append(websocket)
+        self.user_websockets[user_id] = websocket
+
+    async def disconnect(self, user_id: int, task_id: int, websocket: WebSocket):
+        self.active_websockets.get(task_id).remove(websocket)
+        self.user_websockets.pop(user_id, None)
+
+    async def send_message(self, task_id: int, message: dict):
+        clients = self.active_websockets.get(task_id, [])
+        for ws in clients: # type: WebSocket
+            if ws.client_state == WebSocketState.CONNECTED:
+                await ws.send_json(message)
 
 
-@router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    active_websockets.append(websocket)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            # Здесь можно обрабатывать сообщения от клиентов, если это требуется
-    except Exception as e:
-        # Обработка исключений
-        print(f"Error: {e}")
-    finally:
-        active_websockets.remove(websocket)
-        await websocket.close()
+ws_manager = WebSocketManager()
 
 
-async def broadcast_message(message: str):
-    for connection in active_websockets:
-        await connection.send_text(message)
+@router.websocket("/ws/{task_id}")
+async def websocket_endpoint(
+        websocket: WebSocket,
+        task_id: int,
+        session=Depends(get_db_session)):
+    task = await get_task_by_id(task_id, session)
+    token = websocket.headers.get('authorization').split('Bearer ')[1]
+    user = await get_current_user(token, session)
+    excutors_id = [excutor.user_id for excutor in task.task_detail]
+    if user.id == task.creator.id or user.id in excutors_id:
+        await websocket.accept()
+        await ws_manager.connect(user.id, task_id, websocket)
+        try:
+            while True:
+                data = await websocket.receive_text()
+        except Exception as e:
+            await ws_manager.disconnect(user.id, task_id, websocket)
+            print(f"Error: {e}")
+        finally:
+            await websocket.close()
+    else:
+        print('aaaaaaaa помогите')
 
 
 @router.post(
@@ -82,7 +106,7 @@ async def create_task(
 
     session.add_all(list_user_tasks)
     await session.commit()
-    await broadcast_message(f"New task {new_task.name} created by {user.username}")
+    # await broadcast_message(f"New task {new_task.name} created by {user.username}")
     return {
         "status": new_task.status,
         "message": f"Task {new_task.name} successfully created",
@@ -131,7 +155,7 @@ async def delete_task_id(
     if task:
         await session.delete(task)
         await session.commit()
-        await broadcast_message(f"Task {task_id} deleted by {user.username}")
+        await ws_manager.send_message(task_id, message=SuccessResponse(status='aaa', message='bbbb').model_dump())
         return {"massage": f"{user.username} successfully deleted the task {task}"}
     return {"massage": f"This task does not exist or you do not have permissions"}
 
@@ -195,5 +219,5 @@ async def update_task(
             setattr(task, name, value)
 
     await session.commit()
-    await broadcast_message(f"Task {task_id} updated by {user.username}")
+    # await broadcast_message(f"Task {task_id} updated by {user.username}")
     return {"massage": f"User {user.username} update the task"}
