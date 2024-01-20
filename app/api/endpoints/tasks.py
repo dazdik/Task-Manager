@@ -1,15 +1,34 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, WebSocket
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    status,
+    WebSocket,
+    WebSocketException,
+)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.websockets import WebSocketState
+from fastapi.websockets import WebSocketState, WebSocketDisconnect
+
 
 from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import User, UserTasksAssociation
-from app.api.endpoints.dependencies import (check_role, check_role_for_status,
-                                            get_current_user, get_task_by_id,
-                                            send_email_async)
-from app.api.schemas import (CreateTaskSchema, SuccessResponse, TaskCreator,
-                             TaskExecutor, TaskResponse, TaskUpdatePartial)
+from app.api.endpoints.dependencies import (
+    check_role,
+    check_role_for_status,
+    get_current_user,
+    get_task_by_id,
+    send_email_async,
+)
+from app.api.schemas import (
+    CreateTaskSchema,
+    SuccessResponse,
+    TaskCreator,
+    TaskExecutor,
+    TaskResponse,
+    TaskUpdatePartial,
+)
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -17,21 +36,24 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 class WebSocketManager:
     def __init__(self):
         self.active_websockets: dict[int, list[WebSocket]] = {}
-        self.user_websockets: dict[int, WebSocket] = {}
 
-    async def connect(self, user_id: int, task_id: int, websocket: WebSocket):
-        self.active_websockets.get(task_id, []).append(websocket)
-        self.user_websockets[user_id] = websocket
+    async def connect(self, task_id: int, websocket: WebSocket):
+        await websocket.accept()
+        if task_id not in self.active_websockets:
+            self.active_websockets[task_id] = []
+        self.active_websockets[task_id].append(websocket)
 
-    async def disconnect(self, user_id: int, task_id: int, websocket: WebSocket):
+    async def disconnect(self, task_id: int, websocket: WebSocket):
         self.active_websockets.get(task_id).remove(websocket)
-        self.user_websockets.pop(user_id, None)
 
     async def send_message(self, task_id: int, message: dict):
         clients = self.active_websockets.get(task_id, [])
-        for ws in clients: # type: WebSocket
-            if ws.client_state == WebSocketState.CONNECTED:
-                await ws.send_json(message)
+        for ws in clients:  # type: WebSocket
+            try:
+                if ws.client_state == WebSocketState.CONNECTED:
+                    await ws.send_json(message)
+            except Exception as e:
+                print(f"Error sending message: {e}")
 
 
 ws_manager = WebSocketManager()
@@ -39,26 +61,35 @@ ws_manager = WebSocketManager()
 
 @router.websocket("/ws/{task_id}")
 async def websocket_endpoint(
-        websocket: WebSocket,
-        task_id: int,
-        session=Depends(get_db_session)):
+    websocket: WebSocket, task_id: int, session=Depends(get_db_session)
+):
     task = await get_task_by_id(task_id, session)
-    token = websocket.headers.get('authorization').split('Bearer ')[1]
+    if not task:
+        raise WebSocketException(
+            code=status.HTTP_404_NOT_FOUND, reason="this task does not exist"
+        )
+    token = websocket.headers.get("authorization").split("Bearer ")[1]
+    if not token:
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
     user = await get_current_user(token, session)
-    excutors_id = [excutor.user_id for excutor in task.task_detail]
-    if user.id == task.creator.id or user.id in excutors_id:
-        await websocket.accept()
-        await ws_manager.connect(user.id, task_id, websocket)
+    if not user:
+        raise WebSocketException(code=status.HTTP_401_UNAUTHORIZED)
+    executors_id = [executor.user_id for executor in task.task_detail]
+    if user.id == task.creator.id or user.id in executors_id:
+        await ws_manager.connect(task_id, websocket)
         try:
             while True:
                 data = await websocket.receive_text()
-        except Exception as e:
-            await ws_manager.disconnect(user.id, task_id, websocket)
+
+                await ws_manager.send_message(task.id, message={"message": "hi"})
+
+        except WebSocketDisconnect as e:
+            await ws_manager.disconnect(task_id, websocket)
             print(f"Error: {e}")
         finally:
             await websocket.close()
     else:
-        print('aaaaaaaa помогите')
+        print("aaaaaaaa помогите")
 
 
 @router.post(
@@ -155,7 +186,9 @@ async def delete_task_id(
     if task:
         await session.delete(task)
         await session.commit()
-        await ws_manager.send_message(task_id, message=SuccessResponse(status='aaa', message='bbbb').model_dump())
+        await ws_manager.send_message(
+            task_id, message=SuccessResponse(status="aaa", message="bbbb").model_dump()
+        )
         return {"massage": f"{user.username} successfully deleted the task {task}"}
     return {"massage": f"This task does not exist or you do not have permissions"}
 
@@ -219,5 +252,6 @@ async def update_task(
             setattr(task, name, value)
 
     await session.commit()
-    # await broadcast_message(f"Task {task_id} updated by {user.username}")
+    await ws_manager.send_message(task.id, message={"message": "hi"})
+
     return {"massage": f"User {user.username} update the task"}
