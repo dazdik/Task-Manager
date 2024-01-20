@@ -9,9 +9,9 @@ from fastapi import (
 )
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.websockets import WebSocketState, WebSocketDisconnect
+from fastapi.websockets import WebSocketDisconnect
 
-
+from app.api.core import ws_manager
 from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import User, UserTasksAssociation
 from app.api.endpoints.dependencies import (
@@ -28,35 +28,10 @@ from app.api.schemas import (
     TaskExecutor,
     TaskResponse,
     TaskUpdatePartial,
+    TaskEvent,
 )
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
-
-
-class WebSocketManager:
-    def __init__(self):
-        self.active_websockets: dict[int, list[WebSocket]] = {}
-
-    async def connect(self, task_id: int, websocket: WebSocket):
-        await websocket.accept()
-        if task_id not in self.active_websockets:
-            self.active_websockets[task_id] = []
-        self.active_websockets[task_id].append(websocket)
-
-    async def disconnect(self, task_id: int, websocket: WebSocket):
-        self.active_websockets.get(task_id).remove(websocket)
-
-    async def send_message(self, task_id: int, message: dict):
-        clients = self.active_websockets.get(task_id, [])
-        for ws in clients:  # type: WebSocket
-            try:
-                if ws.client_state == WebSocketState.CONNECTED:
-                    await ws.send_json(message)
-            except Exception as e:
-                print(f"Error sending message: {e}")
-
-
-ws_manager = WebSocketManager()
 
 
 @router.websocket("/ws/{task_id}")
@@ -80,8 +55,6 @@ async def websocket_endpoint(
         try:
             while True:
                 data = await websocket.receive_text()
-
-                await ws_manager.send_message(task.id, message={"message": "hi"})
 
         except WebSocketDisconnect as e:
             await ws_manager.disconnect(task_id, websocket)
@@ -137,7 +110,7 @@ async def create_task(
 
     session.add_all(list_user_tasks)
     await session.commit()
-    # await broadcast_message(f"New task {new_task.name} created by {user.username}")
+
     return {
         "status": new_task.status,
         "message": f"Task {new_task.name} successfully created",
@@ -186,8 +159,13 @@ async def delete_task_id(
     if task:
         await session.delete(task)
         await session.commit()
+
         await ws_manager.send_message(
-            task_id, message=SuccessResponse(status="aaa", message="bbbb").model_dump()
+            task.id,
+            message=TaskEvent(
+                event="delete task",
+                message=f"Manager {user.username} delete the task #{task.id}",
+            ).model_dump(),
         )
         return {"massage": f"{user.username} successfully deleted the task {task}"}
     return {"massage": f"This task does not exist or you do not have permissions"}
@@ -252,6 +230,13 @@ async def update_task(
             setattr(task, name, value)
 
     await session.commit()
-    await ws_manager.send_message(task.id, message={"message": "hi"})
+
+    await ws_manager.send_message(
+        task.id,
+        message=TaskEvent(
+            event="update task",
+            message=f"{user.username} update the task #{task.id}",
+        ).model_dump(),
+    )
 
     return {"massage": f"User {user.username} update the task"}
