@@ -34,6 +34,22 @@ from app.api.schemas import (
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 
+@router.websocket("/ws/")
+async def websocket_endpoint_create_task(websocket: WebSocket, session=Depends(get_db_session)):
+    token = websocket.headers.get("authorization").split("Bearer ")[1]
+    if not token:
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+    user = await get_current_user(token, session)
+    if not user:
+        raise WebSocketException(code=status.HTTP_401_UNAUTHORIZED)
+    await ws_manager.connect(user.id, websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(user.id, websocket)
+
+
 @router.websocket("/ws/{task_id}")
 async def websocket_endpoint(
     websocket: WebSocket, task_id: int, session=Depends(get_db_session)
@@ -61,8 +77,6 @@ async def websocket_endpoint(
             print(f"Error: {e}")
         finally:
             await websocket.close()
-    else:
-        print("aaaaaaaa помогите")
 
 
 @router.post(
@@ -110,7 +124,8 @@ async def create_task(
 
     session.add_all(list_user_tasks)
     await session.commit()
-
+    for executor_id in task_data.executors_id:
+        await ws_manager.send_message(executor_id, message=TaskEvent(message=f'{user.username} create new task').model_dump())
     return {
         "status": new_task.status,
         "message": f"Task {new_task.name} successfully created",
