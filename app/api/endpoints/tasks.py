@@ -1,40 +1,68 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, WebSocket
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    status,
+    WebSocket,
+    WebSocketException,
+)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.websockets import WebSocketDisconnect
 
+from app.api.core import ws_manager
 from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import User, UserTasksAssociation
-from app.api.endpoints.dependencies import (check_role, check_role_for_status,
-                                            get_current_user, get_task_by_id,
-                                            send_email_async)
-from app.api.schemas import (CreateTaskSchema, SuccessResponse, TaskCreator,
-                             TaskExecutor, TaskResponse, TaskUpdatePartial)
+from app.api.endpoints.dependencies import (
+    check_role,
+    check_role_for_status,
+    get_current_user,
+    get_task_by_id,
+    send_email_async,
+)
+from app.api.schemas import (
+    CreateTaskSchema,
+    SuccessResponse,
+    TaskCreator,
+    TaskExecutor,
+    TaskResponse,
+    TaskUpdatePartial,
+    TaskEvent,
+)
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 
-active_websockets: list[WebSocket] = []
+@router.websocket("/ws/{task_id}")
+async def websocket_endpoint(
+    websocket: WebSocket, task_id: int, session=Depends(get_db_session)
+):
+    task = await get_task_by_id(task_id, session)
+    if not task:
+        raise WebSocketException(
+            code=status.HTTP_404_NOT_FOUND, reason="this task does not exist"
+        )
+    token = websocket.headers.get("authorization").split("Bearer ")[1]
+    if not token:
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+    user = await get_current_user(token, session)
+    if not user:
+        raise WebSocketException(code=status.HTTP_401_UNAUTHORIZED)
+    executors_id = [executor.user_id for executor in task.task_detail]
+    if user.id == task.creator.id or user.id in executors_id:
+        await ws_manager.connect(task_id, websocket)
+        try:
+            while True:
+                data = await websocket.receive_text()
 
-
-@router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    active_websockets.append(websocket)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            # Здесь можно обрабатывать сообщения от клиентов, если это требуется
-    except Exception as e:
-        # Обработка исключений
-        print(f"Error: {e}")
-    finally:
-        active_websockets.remove(websocket)
-        await websocket.close()
-
-
-async def broadcast_message(message: str):
-    for connection in active_websockets:
-        await connection.send_text(message)
+        except WebSocketDisconnect as e:
+            await ws_manager.disconnect(task_id, websocket)
+            print(f"Error: {e}")
+        finally:
+            await websocket.close()
+    else:
+        print("aaaaaaaa помогите")
 
 
 @router.post(
@@ -82,7 +110,7 @@ async def create_task(
 
     session.add_all(list_user_tasks)
     await session.commit()
-    await broadcast_message(f"New task {new_task.name} created by {user.username}")
+
     return {
         "status": new_task.status,
         "message": f"Task {new_task.name} successfully created",
@@ -131,7 +159,14 @@ async def delete_task_id(
     if task:
         await session.delete(task)
         await session.commit()
-        await broadcast_message(f"Task {task_id} deleted by {user.username}")
+
+        await ws_manager.send_message(
+            task.id,
+            message=TaskEvent(
+                event="delete task",
+                message=f"Manager {user.username} delete the task #{task.id}",
+            ).model_dump(),
+        )
         return {"massage": f"{user.username} successfully deleted the task {task}"}
     return {"massage": f"This task does not exist or you do not have permissions"}
 
@@ -195,5 +230,13 @@ async def update_task(
             setattr(task, name, value)
 
     await session.commit()
-    await broadcast_message(f"Task {task_id} updated by {user.username}")
+
+    await ws_manager.send_message(
+        task.id,
+        message=TaskEvent(
+            event="update task",
+            message=f"{user.username} update the task #{task.id}",
+        ).model_dump(),
+    )
+
     return {"massage": f"User {user.username} update the task"}
