@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -98,3 +98,17 @@ async def get_user_by_id(user_id: int, session: AsyncSession = Depends(get_db_se
         ],
     )
     return user_data
+
+
+@router.delete("/{user_id}")
+@check_role(UserRole.ADMIN)
+async def user_delete(
+        user_id: int,
+        user=Depends(get_current_user),
+        session: AsyncSession = Depends(get_db_session)
+):
+    stmt = await session.execute(select(User).where(User.id == user_id))
+    user_del = stmt.scalar_one_or_none()
+    await session.delete(user_del)
+    await session.commit()
+    return {"message": f"{user_del.username} successfully deleted"}

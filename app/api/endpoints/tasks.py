@@ -142,7 +142,7 @@ async def get_task_id(task_id: int, session: AsyncSession = Depends(get_db_sessi
         status=task.status,
         creator=TaskCreator(
             id=task.creator.id, username=task.creator.username, email=task.creator.email
-        ),
+        ) if task.creator else "Creator will be add soon",
         executors=[
             TaskExecutor(
                 id=executor.user.id,
