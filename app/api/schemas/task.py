@@ -26,9 +26,9 @@ class TaskUpdatePartial(BaseModel):
 
 
 class UserBase(BaseModel):
-    id: int
-    username: str
-    email: str
+    id: int | None
+    username: str | None
+    email: str | None
 
 
 class TaskExecutor(UserBase):
@@ -48,7 +48,7 @@ class TaskResponse(BaseModel):
     created_at: datetime
     urgency: bool
     status: TaskStatus
-    creator: TaskCreator
+    creator: TaskCreator | str
     executors: list[TaskExecutor]
 
 
