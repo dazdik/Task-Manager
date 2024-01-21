@@ -12,6 +12,7 @@ __all__ = (
     "TaskInWork",
     "UserResponse",
     "TaskEvent",
+    "UserUpdatePartial",
 )
 
 from .task import (
@@ -24,5 +25,5 @@ from .task import (
     TaskUpdatePartial,
     TaskUserResponse,
 )
-from .user import CreateUserSchema, DataToken, Token, UserResponse
+from .user import CreateUserSchema, DataToken, Token, UserResponse, UserUpdatePartial
 from .websockets import TaskEvent

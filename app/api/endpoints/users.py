@@ -7,8 +7,13 @@ from sqlalchemy.orm import joinedload
 from app.api.db import User, UserRole, get_db_session
 from app.api.db.models import UserTasksAssociation
 from app.api.endpoints.dependencies import check_role, get_current_user
-from app.api.schemas import (CreateUserSchema, TaskInWork, TaskUserResponse,
-                             UserResponse)
+from app.api.schemas import (
+    CreateUserSchema,
+    TaskInWork,
+    TaskUserResponse,
+    UserResponse,
+    UserUpdatePartial,
+)
 
 router = APIRouter(prefix="/users", tags=["Users"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -103,12 +108,38 @@ async def get_user_by_id(user_id: int, session: AsyncSession = Depends(get_db_se
 @router.delete("/{user_id}")
 @check_role(UserRole.ADMIN)
 async def user_delete(
-        user_id: int,
-        user=Depends(get_current_user),
-        session: AsyncSession = Depends(get_db_session)
+    user_id: int,
+    user=Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
 ):
     stmt = await session.execute(select(User).where(User.id == user_id))
     user_del = stmt.scalar_one_or_none()
     await session.delete(user_del)
     await session.commit()
     return {"message": f"{user_del.username} successfully deleted"}
+
+
+@router.patch("{user_id}")
+async def change_user(
+    user_id: int,
+    user_in: UserUpdatePartial,
+    user=Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    stmt = await session.execute(select(User).where(User.id == user_id))
+    user_update = stmt.scalar_one_or_none()
+    if user.role != UserRole.ADMIN:
+        if user_in.role is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have enough privileges to change the role",
+            )
+    if user_id == user.id:
+        for name, value in user_in.model_dump(exclude_unset=True).items():
+            if name == "hashed_password":
+                user_update.password = hash_pass(user_in.hashed_password)
+
+            setattr(user_update, name, value)
+    else:
+        user_update.role = user_in.role
+    await session.commit()
