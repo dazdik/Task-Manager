@@ -2,7 +2,7 @@ from email.message import EmailMessage
 from functools import wraps
 
 import aiosmtplib
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, WebSocket, WebSocketException
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login/")
 async def get_current_user(
     token: str = Depends(oauth2_scheme), session: AsyncSession = Depends(get_db_session)
 ):
+    """Получение текущего юзера."""
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Failed to verify credentials",
@@ -34,6 +36,8 @@ async def get_current_user(
 
 
 def check_role(*roles):
+    """Декоратор для проверки роли пользователя."""
+
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -51,6 +55,8 @@ def check_role(*roles):
 
 
 async def check_role_for_status(user: User):
+    """Проверка доступных статусов для юзеров и менеджеров."""
+
     status_for_user = {
         UserRole.USER: [TaskStatus.AT_WORK, TaskStatus.ON_CHECK],
         UserRole.MANAGER: [TaskStatus.FROZEN, TaskStatus.CANCEL, TaskStatus.FINISHED],
@@ -90,3 +96,13 @@ async def send_email_async(subject: str, body: str, to_email: str):
         password=settings.EMAIL.PASS,
         use_tls=True,
     )
+
+
+async def get_user_with_token(websocket: WebSocket, session: AsyncSession):
+    token = websocket.headers.get("authorization").split("Bearer ")[1]
+    if not token:
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+    user = await get_current_user(token, session)
+    if not user:
+        raise WebSocketException(code=status.HTTP_401_UNAUTHORIZED)
+    return user

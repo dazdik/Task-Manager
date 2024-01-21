@@ -20,6 +20,7 @@ from app.api.endpoints.dependencies import (
     get_current_user,
     get_task_by_id,
     send_email_async,
+    get_user_with_token,
 )
 from app.api.schemas import (
     CreateTaskSchema,
@@ -35,13 +36,10 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 
 @router.websocket("/ws/")
-async def websocket_endpoint_create_task(websocket: WebSocket, session=Depends(get_db_session)):
-    token = websocket.headers.get("authorization").split("Bearer ")[1]
-    if not token:
-        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-    user = await get_current_user(token, session)
-    if not user:
-        raise WebSocketException(code=status.HTTP_401_UNAUTHORIZED)
+async def websocket_endpoint_create_task(
+    websocket: WebSocket, session=Depends(get_db_session)
+):
+    user = await get_user_with_token(websocket, session)
     await ws_manager.connect(user.id, websocket)
     try:
         while True:
@@ -59,12 +57,7 @@ async def websocket_endpoint(
         raise WebSocketException(
             code=status.HTTP_404_NOT_FOUND, reason="this task does not exist"
         )
-    token = websocket.headers.get("authorization").split("Bearer ")[1]
-    if not token:
-        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-    user = await get_current_user(token, session)
-    if not user:
-        raise WebSocketException(code=status.HTTP_401_UNAUTHORIZED)
+    user = await get_user_with_token(websocket, session)
     executors_id = [executor.user_id for executor in task.task_detail]
     if user.id == task.creator.id or user.id in executors_id:
         await ws_manager.connect(task_id, websocket)
@@ -125,7 +118,10 @@ async def create_task(
     session.add_all(list_user_tasks)
     await session.commit()
     for executor_id in task_data.executors_id:
-        await ws_manager.send_message(executor_id, message=TaskEvent(message=f'{user.username} create new task').model_dump())
+        await ws_manager.send_message(
+            executor_id,
+            message=TaskEvent(message=f"{user.username} create new task").model_dump(),
+        )
     return {
         "status": new_task.status,
         "message": f"Task {new_task.name} successfully created",
