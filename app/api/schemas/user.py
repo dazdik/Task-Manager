@@ -42,3 +42,10 @@ class UserResponse(BaseModel):
     role: UserRole
     created_tasks: list[TaskUserResponse]
     in_work: list[TaskInWork]
+
+
+class UserUpdatePartial(BaseModel):
+    username: str | None = None
+    email: EmailStr | None = None
+    hashed_password: str | None = None
+    role: UserRole | None = None
