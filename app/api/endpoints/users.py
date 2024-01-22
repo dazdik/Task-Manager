@@ -129,22 +129,47 @@ async def change_user(
     stmt = await session.execute(select(User).where(User.id == user_id))
     user_update = stmt.scalar_one_or_none()
 
-    if user_id != user.id:
-        if user.role == UserRole.ADMIN:
-            user_update.role = user_in.role
-
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have enough privileges to change the role",
-            )
-
-    else:
-        for name, value in user_in.model_dump(exclude_unset=True).items():
+    if user_update.id != user.id and user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have enough privileges to change",
+        )
+    for name, value in user_in.model_dump(exclude_unset=True).items():
+        if user_update.id == user.id:
+            if name == "role":
+                if value is not None:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="You do not have enough privileges to change the role",
+                    )
             if name == "hashed_password":
                 user_update.password = hash_pass(user_in.hashed_password)
-
-            setattr(user_update, name, value)
-
+        if user.role == UserRole.ADMIN and user.id != user_update.id:
+            if (
+                user_in.username is not None
+                or user_in.email is not None
+                or user_in.hashed_password is not None
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You do not have enough privileges to change",
+                )
+            user_update.role = user_in.role
+        setattr(user_update, name, value)
     await session.commit()
-    return f"{user.role} {user.username} has changed {user_in.model_dump().keys()}"
+
+    # if user.role != UserRole.ADMIN:
+    #     if user_in.role is not None:
+    #         raise HTTPException(
+    #             status_code=status.HTTP_403_FORBIDDEN,
+    #             detail="You do not have enough privileges to change the role",
+    #         )
+    # if user_id == user.id:
+    #     for name, value in user_in.model_dump(exclude_unset=True).items():
+    #         if name == "hashed_password":
+    #             user_update.password = hash_pass(user_in.hashed_password)
+    #
+    #         setattr(user_update, name, value)
+    # else:
+    #     user_update.role = user_in.role
+    # await session.commit()
