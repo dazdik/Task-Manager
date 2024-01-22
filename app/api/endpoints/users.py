@@ -128,18 +128,23 @@ async def change_user(
 ):
     stmt = await session.execute(select(User).where(User.id == user_id))
     user_update = stmt.scalar_one_or_none()
-    if user.role != UserRole.ADMIN:
-        if user_in.role is not None:
+
+    if user_id != user.id:
+        if user.role == UserRole.ADMIN:
+            user_update.role = user_in.role
+
+        else:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have enough privileges to change the role",
             )
-    if user_id == user.id:
+
+    else:
         for name, value in user_in.model_dump(exclude_unset=True).items():
             if name == "hashed_password":
                 user_update.password = hash_pass(user_in.hashed_password)
 
             setattr(user_update, name, value)
-    else:
-        user_update.role = user_in.role
+
     await session.commit()
+    return f"{user.role} {user.username} has changed {user_in.model_dump().keys()}"
