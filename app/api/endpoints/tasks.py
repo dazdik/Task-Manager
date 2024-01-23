@@ -7,13 +7,14 @@ from fastapi import (
     WebSocket,
     WebSocketException,
 )
-from sqlalchemy import select
+from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.websockets import WebSocketDisconnect
+from sqlalchemy.orm import joinedload
 
 from app.api.core import ws_manager
 from app.api.db import Task, UserRole, get_db_session
-from app.api.db.models import User, UserTasksAssociation
+from app.api.db.models import User, UserTasksAssociation, TaskStatus
 from app.api.endpoints.dependencies import (
     check_role,
     check_role_for_status,
@@ -21,6 +22,12 @@ from app.api.endpoints.dependencies import (
     get_task_by_id,
     send_email_async,
     get_user_with_token,
+)
+from app.api.endpoints.filter import (
+    filter_like,
+    filter_status,
+    filter_date,
+    filter_exact,
 )
 from app.api.schemas import (
     CreateTaskSchema,
@@ -31,6 +38,7 @@ from app.api.schemas import (
     TaskUpdatePartial,
     TaskEvent,
 )
+from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -128,6 +136,94 @@ async def create_task(
     }
 
 
+@router.get("/")
+async def get_all_tasks(
+    filter_field: str = None,
+    filter_value: str = None,
+    sort_by: str = None,
+    order: str = "asc",
+    limit: int = 3,
+    user=Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    query = select(Task).options(
+        joinedload(Task.creator),
+        joinedload(Task.task_detail).joinedload(UserTasksAssociation.user),
+    )
+
+    # Фильтрация
+    filter_methods = {
+        "name": filter_like,
+        "description": filter_like,
+        "status": filter_status,
+        "created_at": filter_date,
+        # "urgency": filter_exact,
+        # Здесь можно добавить другие поля и их функции фильтрации
+    }
+
+    if filter_field and filter_value:
+        if filter_field in filter_methods:
+            field = getattr(Task, filter_field)
+            filter_condition = filter_methods[filter_field](field, filter_value)
+
+            query = query.filter(
+                *filter_condition
+                if isinstance(filter_condition, list)
+                else filter_condition
+            )
+
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Invalid filter field"
+            )
+    # Сортировка
+    if sort_by and sort_by in [
+        "id",
+        "name",
+        "description",
+        "urgency",
+        "status",
+        "created_at",
+    ]:
+        if order == "desc":
+            query = query.order_by(desc(getattr(Task, sort_by)))
+        else:
+            query = query.order_by(getattr(Task, sort_by))
+    elif sort_by:
+        raise ValueError("Invalid sort field")
+
+    result = await session.execute(query)
+    tasks = result.scalars().unique()
+    list_of_tasks = []
+    for task in tasks:
+        task_data = TaskResponse(
+            id=task.id,
+            name=task.name,
+            description=task.description,
+            created_at=task.created_at,
+            urgency=task.urgency,
+            status=task.status,
+            creator=TaskCreator(
+                id=task.creator.id,
+                username=task.creator.username,
+                email=task.creator.email,
+            )
+            if task.creator
+            else "Creator will be add soon",
+            executors=[
+                TaskExecutor(
+                    id=executor.user.id,
+                    username=executor.user.username,
+                    email=executor.user.email,
+                )
+                for executor in task.task_detail
+            ],
+        )
+        list_of_tasks.append(task_data)
+
+    return list_of_tasks[:limit]
+
+
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task_id(task_id: int, session: AsyncSession = Depends(get_db_session)):
     """Получение таски по айди с информацией о создателе задачи и исполнителе/исполнителях."""
@@ -142,7 +238,9 @@ async def get_task_id(task_id: int, session: AsyncSession = Depends(get_db_sessi
         status=task.status,
         creator=TaskCreator(
             id=task.creator.id, username=task.creator.username, email=task.creator.email
-        ) if task.creator else "Creator will be add soon",
+        )
+        if task.creator
+        else "Creator will be add soon",
         executors=[
             TaskExecutor(
                 id=executor.user.id,
