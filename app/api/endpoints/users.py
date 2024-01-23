@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 
 from app.api.db import User, UserRole, get_db_session
 from app.api.db.models import UserTasksAssociation
-from app.api.endpoints.dependencies import check_role, get_current_user
+from app.api.endpoints.users_utils import check_role, get_current_user
 from app.api.schemas import (
     CreateUserSchema,
     TaskInWork,

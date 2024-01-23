@@ -3,42 +3,34 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     HTTPException,
-    status,
     WebSocket,
     WebSocketException,
+    status,
 )
-from sqlalchemy import select, desc
-from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.websockets import WebSocketDisconnect
+from sqlalchemy import desc, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.api.core import ws_manager
 from app.api.db import Task, UserRole, get_db_session
-from app.api.db.models import User, UserTasksAssociation, TaskStatus
-from app.api.endpoints.dependencies import (
+from app.api.db.models import User, UserTasksAssociation
+from app.api.endpoints.filter import filter_date, filter_like, filter_status
+from app.api.endpoints.tasks_utils import get_task_by_id, get_task_response
+from app.api.endpoints.users_utils import (
     check_role,
     check_role_for_status,
     get_current_user,
-    get_task_by_id,
-    send_email_async,
     get_user_with_token,
-)
-from app.api.endpoints.filter import (
-    filter_like,
-    filter_status,
-    filter_date,
-    filter_exact,
+    send_email_async,
 )
 from app.api.schemas import (
     CreateTaskSchema,
     SuccessResponse,
-    TaskCreator,
-    TaskExecutor,
+    TaskEvent,
     TaskResponse,
     TaskUpdatePartial,
-    TaskEvent,
 )
-from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -196,29 +188,7 @@ async def get_all_tasks(
     tasks = result.scalars().unique()
     list_of_tasks = []
     for task in tasks:
-        task_data = TaskResponse(
-            id=task.id,
-            name=task.name,
-            description=task.description,
-            created_at=task.created_at,
-            urgency=task.urgency,
-            status=task.status,
-            creator=TaskCreator(
-                id=task.creator.id,
-                username=task.creator.username,
-                email=task.creator.email,
-            )
-            if task.creator
-            else "Creator will be add soon",
-            executors=[
-                TaskExecutor(
-                    id=executor.user.id,
-                    username=executor.user.username,
-                    email=executor.user.email,
-                )
-                for executor in task.task_detail
-            ],
-        )
+        task_data = await get_task_response(task)
         list_of_tasks.append(task_data)
 
     return list_of_tasks[:limit]
@@ -229,27 +199,7 @@ async def get_task_id(task_id: int, session: AsyncSession = Depends(get_db_sessi
     """Получение таски по айди с информацией о создателе задачи и исполнителе/исполнителях."""
 
     task = await get_task_by_id(task_id, session)
-    task_data = TaskResponse(
-        id=task.id,
-        name=task.name,
-        description=task.description,
-        created_at=task.created_at,
-        urgency=task.urgency,
-        status=task.status,
-        creator=TaskCreator(
-            id=task.creator.id, username=task.creator.username, email=task.creator.email
-        )
-        if task.creator
-        else "Creator will be add soon",
-        executors=[
-            TaskExecutor(
-                id=executor.user.id,
-                username=executor.user.username,
-                email=executor.user.email,
-            )
-            for executor in task.task_detail
-        ],
-    )
+    task_data = await get_task_response(task)
     return task_data
 
 

@@ -63,6 +63,3 @@ class TaskUserResponse(BaseModel):
     created_at: datetime
     urgency: bool
     status: TaskStatus
-
-
-
