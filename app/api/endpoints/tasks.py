@@ -8,6 +8,7 @@ from fastapi import (
     status,
 )
 from fastapi.websockets import WebSocketDisconnect
+from fastapi_filter import FilterDepends
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -15,7 +16,7 @@ from sqlalchemy.orm import joinedload
 from app.api.core import ws_manager
 from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import User, UserTasksAssociation
-from app.api.endpoints.filter import filter_date, filter_like, filter_status
+from app.api.endpoints.filter import filter_date, filter_like, filter_status, TaskFilter
 from app.api.endpoints.tasks_utils import get_task_by_id, get_task_response
 from app.api.endpoints.users_utils import (
     check_role,
@@ -130,8 +131,7 @@ async def create_task(
 
 @router.get("/")
 async def get_all_tasks(
-    filter_field: str = None,
-    filter_value: str = None,
+    task_filter: TaskFilter = FilterDepends(TaskFilter),
     sort_by: str = None,
     order: str = "asc",
     limit: int = 3,
@@ -144,30 +144,7 @@ async def get_all_tasks(
     )
 
     # Фильтрация
-    filter_methods = {
-        "name": filter_like,
-        "description": filter_like,
-        "status": filter_status,
-        "created_at": filter_date,
-        # "urgency": filter_exact,
-        # Здесь можно добавить другие поля и их функции фильтрации
-    }
-
-    if filter_field and filter_value:
-        if filter_field in filter_methods:
-            field = getattr(Task, filter_field)
-            filter_condition = filter_methods[filter_field](field, filter_value)
-
-            query = query.filter(
-                *filter_condition
-                if isinstance(filter_condition, list)
-                else filter_condition
-            )
-
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Invalid filter field"
-            )
+    query = task_filter.filter(query)
     # Сортировка
     if sort_by and sort_by in [
         "id",
