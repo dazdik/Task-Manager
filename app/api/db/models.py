@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date
 from enum import Enum as PyEnum
 
 from sqlalchemy import Enum, ForeignKey, String, Text, UniqueConstraint, func
@@ -63,9 +63,9 @@ class User(Base):
     username: Mapped[str] = mapped_column(unique=True)
     password: Mapped[str] = mapped_column(nullable=False)
     email: Mapped[str] = mapped_column(unique=True)
-    created_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(),
-        default=datetime.now,
+    created_at: Mapped[date] = mapped_column(
+        server_default=func.today(),
+        default=date.today,
     )
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole), default=UserRole.USER.name, server_default="USER"
@@ -84,9 +84,9 @@ class User(Base):
 class Task(Base):
     name: Mapped[str] = mapped_column(String(155))
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(),
-        default=datetime.now,
+    created_at: Mapped[date] = mapped_column(
+        server_default=func.today(),
+        default=date.today,
     )
     urgency: Mapped[bool] = mapped_column(default=False, server_default="false")
     status: Mapped[TaskStatus] = mapped_column(
