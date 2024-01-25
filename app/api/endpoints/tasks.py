@@ -16,7 +16,7 @@ from sqlalchemy.orm import joinedload
 from app.api.core import ws_manager
 from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import User, UserTasksAssociation
-from app.api.endpoints.filter import TaskFilter, filter_date
+from app.api.endpoints.filter import TaskFilter
 from app.api.endpoints.tasks_utils import get_task_by_id, get_task_response
 from app.api.endpoints.users_utils import (
     check_role,
@@ -143,7 +143,10 @@ async def get_all_tasks(
         joinedload(Task.task_detail).joinedload(UserTasksAssociation.user),
     )
 
+    # if task_filter.created_at:
+    #     query = query.filter(cast(Task.created_at, Date) == task_filter.created_at)
     query = task_filter.filter(query)
+
     # Сортировка
     if sort_by and sort_by in [
         "id",
