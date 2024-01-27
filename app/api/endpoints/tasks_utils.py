@@ -31,6 +31,7 @@ async def get_task_response(task):
         name=task.name,
         description=task.description,
         created_at=task.created_at,
+        deadline=task.deadline,
         urgency=task.urgency,
         status=task.status,
         creator=TaskCreator(

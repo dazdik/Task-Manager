@@ -27,6 +27,7 @@ class TaskFilter(Filter):
     name__ilike: str | None = None
     status: TaskStatus | None = None
     created_at: date | None = None
+    deadline: date | None = None
     executor: ExecutorFilter | None = FilterDepends(
         with_prefix("executor", ExecutorFilter)
     )

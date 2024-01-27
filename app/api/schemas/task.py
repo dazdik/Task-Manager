@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -8,7 +8,8 @@ from app.api.db import TaskStatus
 class CreateTaskSchema(BaseModel):
     name: str = Field(max_length=155)
     description: str | None = None
-    created_at: datetime
+    created_at: date
+    deadline: date
     urgency: bool = False
     executors_id: list[int]
 
@@ -45,7 +46,8 @@ class TaskResponse(BaseModel):
     id: int
     name: str
     description: str
-    created_at: datetime
+    created_at: date
+    deadline: date | None = None
     urgency: bool
     status: TaskStatus
     creator: TaskCreator | str
@@ -60,6 +62,7 @@ class TaskInWork(BaseModel):
 class TaskUserResponse(BaseModel):
     id: int
     name: str
-    created_at: datetime
+    created_at: date
+    deadline: date
     urgency: bool
     status: TaskStatus

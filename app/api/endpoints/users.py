@@ -71,7 +71,6 @@ async def get_users(
 
     return paginate(users_without_passwords)
 
-
 @router.get("/me")
 @check_role(UserRole.ADMIN, UserRole.MANAGER, UserRole.USER)
 async def get_me(user: User = Depends(get_current_user)):
@@ -102,6 +101,7 @@ async def get_user_by_id(user_id: int, session: AsyncSession = Depends(get_db_se
                 id=task.id,
                 name=task.name,
                 created_at=task.created_at,
+                deadline=task.deadline,
                 urgency=task.urgency,
                 status=task.status,
             )

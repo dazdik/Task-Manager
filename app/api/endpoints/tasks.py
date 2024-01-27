@@ -91,6 +91,7 @@ async def create_task(
         description=task_data.description,
         urgency=task_data.urgency,
         creator_id=user.id,
+        deadline=task_data.deadline
     )
 
     session.add(new_task)

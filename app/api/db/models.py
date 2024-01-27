@@ -7,7 +7,7 @@ from sqlalchemy.orm import (
     Mapped,
     declared_attr,
     mapped_column,
-    relationship,
+    relationship, validates,
 )
 
 
@@ -92,6 +92,7 @@ class Task(Base):
     status: Mapped[TaskStatus] = mapped_column(
         Enum(TaskStatus), default=TaskStatus.CREATED.name, server_default="CREATED"
     )
+    deadline: Mapped[date] = mapped_column(nullable=True)
     creator_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -100,6 +101,12 @@ class Task(Base):
         back_populates="task", cascade="all, delete", passive_deletes=True
     )
     creator: Mapped["User"] = relationship(back_populates="created_tasks")
+
+    @validates('deadline')
+    def validate_deadline(self, key, deadline):
+        if deadline is not None and self.created_at is not None and deadline < self.created_at:
+            raise ValueError("Deadline cannot be earlier than creation date")
+        return deadline
 
     def __str__(self):
         return f"{self.name}"
