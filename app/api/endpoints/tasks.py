@@ -134,18 +134,20 @@ async def get_all_tasks(
     task_filter: TaskFilter = FilterDepends(TaskFilter),
     sort_by: str = None,
     order: str = "asc",
-    limit: int = 3,
+    limit: int = 10,
     user=Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+
     query = select(Task).options(
         joinedload(Task.creator),
         joinedload(Task.task_detail).joinedload(UserTasksAssociation.user),
     )
 
-    # if task_filter.created_at:
-    #     query = query.filter(cast(Task.created_at, Date) == task_filter.created_at)
     query = task_filter.filter(query)
+
+    query = task_filter.apply_creator_filter(query)
+    query = task_filter.apply_executor_filter(query)
 
     # Сортировка
     if sort_by and sort_by in [
