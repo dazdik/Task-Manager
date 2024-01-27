@@ -2,10 +2,11 @@ from datetime import date
 
 from fastapi_filter import FilterDepends, with_prefix
 from fastapi_filter.contrib.sqlalchemy import Filter
+from pydantic import EmailStr
 from sqlalchemy.orm import aliased
 
 from app.api.db import Task, TaskStatus, User
-from app.api.db.models import UserTasksAssociation
+from app.api.db.models import UserTasksAssociation, UserRole
 
 
 class UserTaskFilter(Filter):
@@ -46,3 +47,11 @@ class TaskFilter(Filter):
             )
 
         return query
+
+
+class UserFilter(UserTaskFilter):
+    email__ilike: str | None = None
+    role: UserRole | None = None
+    order_by:  list[str] | None = None
+
+

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi_filter import FilterDepends
 from fastapi_pagination import Page, paginate
 from passlib.context import CryptContext
 from sqlalchemy import select
@@ -7,6 +8,7 @@ from sqlalchemy.orm import joinedload
 
 from app.api.db import User, UserRole, get_db_session
 from app.api.db.models import UserTasksAssociation
+from app.api.endpoints.filter import UserFilter
 from app.api.endpoints.users_utils import check_role, get_current_user
 from app.api.schemas import (
     CreateUserSchema,
@@ -46,10 +48,16 @@ async def create_user(
 
 
 @router.get("/all", response_model=Page[UsersAllSchemas])
-async def get_users(session: AsyncSession = Depends(get_db_session)):
+async def get_users(
+        session: AsyncSession = Depends(get_db_session),
+        user_filter: UserFilter = FilterDepends(UserFilter)
+):
     """Получение списка всех юзеров с краткой информацией."""
 
-    stmt = await session.execute(select(User).order_by(User.id))
+    query = select(User)
+    query = user_filter.filter(query)
+    query = user_filter.sort(query)
+    stmt = await session.execute(query)
     users = stmt.scalars().all()
     users_without_passwords = []
 
