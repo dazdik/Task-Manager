@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi_pagination import Page, paginate
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,7 @@ from app.api.schemas import (
     TaskInWork,
     TaskUserResponse,
     UserResponse,
+    UsersAllSchemas,
     UserUpdatePartial,
 )
 
@@ -43,7 +45,7 @@ async def create_user(
     return user
 
 
-@router.get("/all")
+@router.get("/all", response_model=Page[UsersAllSchemas])
 async def get_users(session: AsyncSession = Depends(get_db_session)):
     """Получение списка всех юзеров с краткой информацией."""
 
@@ -59,7 +61,7 @@ async def get_users(session: AsyncSession = Depends(get_db_session)):
         }
         users_without_passwords.append(user_data)
 
-    return users_without_passwords
+    return paginate(users_without_passwords)
 
 
 @router.get("/me")

@@ -2,10 +2,9 @@ from datetime import date
 
 from fastapi_filter import FilterDepends, with_prefix
 from fastapi_filter.contrib.sqlalchemy import Filter
-
 from sqlalchemy.orm import aliased
 
-from app.api.db import TaskStatus, Task, User
+from app.api.db import Task, TaskStatus, User
 from app.api.db.models import UserTasksAssociation
 
 
@@ -27,7 +26,6 @@ class TaskFilter(Filter):
     name__ilike: str | None = None
     status: TaskStatus | None = None
     created_at: date | None = None
-
     executor: ExecutorFilter | None = FilterDepends(
         with_prefix("executor", ExecutorFilter)
     )

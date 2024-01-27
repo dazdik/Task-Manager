@@ -5,7 +5,7 @@ from sqlalchemy.orm import joinedload
 
 from app.api.db import Task
 from app.api.db.models import UserTasksAssociation
-from app.api.schemas import TaskResponse, TaskCreator, TaskExecutor
+from app.api.schemas import TaskCreator, TaskExecutor, TaskResponse
 
 
 async def get_task_by_id(task_id: int, session: AsyncSession):

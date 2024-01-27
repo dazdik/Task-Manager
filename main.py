@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi_pagination import add_pagination
 from sqladmin import Admin
 
 from app.api import router
@@ -36,6 +37,7 @@ admin.add_view(TaskModelView)
 admin.add_view(UserTasksAssociationModelView)
 app.include_router(router)
 app.include_router(admin_router)
+add_pagination(app)
 
 if __name__ == "__main__":
     uvicorn.run(

@@ -49,3 +49,8 @@ class UserUpdatePartial(BaseModel):
     email: EmailStr | None = None
     password: str | None = None
     role: UserRole | None = None
+
+
+class UsersAllSchemas(UserBaseSchema):
+    role: UserRole
+    id: int

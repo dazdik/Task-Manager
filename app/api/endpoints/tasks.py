@@ -9,9 +9,10 @@ from fastapi import (
 )
 from fastapi.websockets import WebSocketDisconnect
 from fastapi_filter import FilterDepends
+from fastapi_pagination import Page, paginate
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, aliased
+from sqlalchemy.orm import aliased, joinedload
 
 from app.api.core import ws_manager
 from app.api.db import Task, UserRole, get_db_session
@@ -129,10 +130,9 @@ async def create_task(
     }
 
 
-@router.get("/")
+@router.get("/", response_model=Page[TaskResponse])
 async def get_all_tasks(
     task_filter: TaskFilter = FilterDepends(TaskFilter),
-    limit: int = 10,
     user=Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
@@ -142,19 +142,17 @@ async def get_all_tasks(
     )
 
     query = task_filter.filter(query)
-
     query = task_filter.apply_users_filter(query)
     query = task_filter.sort(query)
 
     result = await session.execute(query)
     tasks = result.scalars().unique()
-    print(tasks)
     list_of_tasks = []
     for task in tasks:
         task_data = await get_task_response(task)
         list_of_tasks.append(task_data)
 
-    return list_of_tasks[:limit]
+    return paginate(list_of_tasks)
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
