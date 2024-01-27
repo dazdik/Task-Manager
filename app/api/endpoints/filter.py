@@ -3,20 +3,21 @@ from datetime import date
 from fastapi_filter import FilterDepends, with_prefix
 from fastapi_filter.contrib.sqlalchemy import Filter
 
-from app.api.db import TaskStatus, Task, UserRole, User
+from sqlalchemy.orm import aliased
+
+from app.api.db import TaskStatus, Task, User
 from app.api.db.models import UserTasksAssociation
 
 
-class UserFilter(Filter):
+class UserTaskFilter(Filter):
     username: str | None = None
-    role: UserRole | None = None
 
     class Constants(Filter.Constants):
         model = User
 
 
 class ExecutorFilter(Filter):
-    user: UserFilter | None = FilterDepends(with_prefix("user", UserFilter))
+    user: UserTaskFilter | None = FilterDepends(with_prefix("executor", UserTaskFilter))
 
     class Constants(Filter.Constants):
         model = UserTasksAssociation
@@ -26,10 +27,24 @@ class TaskFilter(Filter):
     name__ilike: str | None = None
     status: TaskStatus | None = None
     created_at: date | None = None
-    creator: UserFilter | None = FilterDepends(with_prefix("creator", UserFilter))
-    executor__user__username: ExecutorFilter | None = FilterDepends(
+
+    executor: ExecutorFilter | None = FilterDepends(
         with_prefix("executor", ExecutorFilter)
     )
+    order_by: list[str] | None = None
 
     class Constants(Filter.Constants):
         model = Task
+
+    def apply_users_filter(self, query):
+        executor_alias = aliased(User, name="executor_alias")
+        uta_alias = aliased(UserTasksAssociation, name="uta_alias")
+
+        if self.executor and self.executor.user and self.executor.user.username:
+            query = (
+                query.join(uta_alias, Task.id == uta_alias.task_id)
+                .join(executor_alias, uta_alias.user_id == executor_alias.id)
+                .where(executor_alias.username == self.executor.user.username)
+            )
+
+        return query

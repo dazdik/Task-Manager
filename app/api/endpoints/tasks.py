@@ -9,9 +9,9 @@ from fastapi import (
 )
 from fastapi.websockets import WebSocketDisconnect
 from fastapi_filter import FilterDepends
-from sqlalchemy import desc, select, cast, Date
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, aliased
 
 from app.api.core import ws_manager
 from app.api.db import Task, UserRole, get_db_session
@@ -132,41 +132,23 @@ async def create_task(
 @router.get("/")
 async def get_all_tasks(
     task_filter: TaskFilter = FilterDepends(TaskFilter),
-    sort_by: str = None,
-    order: str = "asc",
-    limit: int = 3,
+    limit: int = 10,
     user=Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
-    query = (
-        select(Task)
-        .options(
-            joinedload(Task.creator),
-            joinedload(Task.task_detail).joinedload(UserTasksAssociation.user),
-        )
-        .join(User)
+    query = select(Task).options(
+        joinedload(Task.creator),
+        joinedload(Task.task_detail).joinedload(UserTasksAssociation.user),
     )
 
     query = task_filter.filter(query)
 
-    # Сортировка
-    if sort_by and sort_by in [
-        "id",
-        "name",
-        "description",
-        "urgency",
-        "status",
-        "created_at",
-    ]:
-        if order == "desc":
-            query = query.order_by(desc(getattr(Task, sort_by)))
-        else:
-            query = query.order_by(getattr(Task, sort_by))
-    elif sort_by:
-        raise ValueError("Invalid sort field")
+    query = task_filter.apply_users_filter(query)
+    query = task_filter.sort(query)
 
     result = await session.execute(query)
     tasks = result.scalars().unique()
+    print(tasks)
     list_of_tasks = []
     for task in tasks:
         task_data = await get_task_response(task)
