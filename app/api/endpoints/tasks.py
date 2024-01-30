@@ -1,16 +1,9 @@
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Depends,
-    HTTPException,
-    WebSocket,
-    WebSocketException,
-    status,
-)
+from fastapi import (APIRouter, BackgroundTasks, Depends, HTTPException,
+                     WebSocket, WebSocketException, status)
 from fastapi.websockets import WebSocketDisconnect
 from fastapi_filter import FilterDepends
 from fastapi_pagination import Page, paginate
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, joinedload
 
@@ -19,20 +12,12 @@ from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import User, UserTasksAssociation
 from app.api.endpoints.filter import TaskFilter
 from app.api.endpoints.tasks_utils import get_task_by_id, get_task_response
-from app.api.endpoints.users_utils import (
-    check_role,
-    check_role_for_status,
-    get_current_user,
-    get_user_with_token,
-    send_email_async,
-)
-from app.api.schemas import (
-    CreateTaskSchema,
-    SuccessResponse,
-    TaskEvent,
-    TaskResponse,
-    TaskUpdatePartial,
-)
+from app.api.endpoints.users_utils import (check_role, check_role_for_status,
+                                           get_current_user,
+                                           get_user_with_token,
+                                           send_email_async)
+from app.api.schemas import (CreateTaskSchema, SuccessResponse, TaskEvent,
+                             TaskResponse, TaskUpdatePartial)
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -91,7 +76,7 @@ async def create_task(
         description=task_data.description,
         urgency=task_data.urgency,
         creator_id=user.id,
-        deadline=task_data.deadline
+        deadline=task_data.deadline,
     )
 
     session.add(new_task)
@@ -261,3 +246,60 @@ async def update_task(
     )
 
     return {"massage": f"User {user.username} update the task"}
+
+
+@router.get("/test")
+async def get_test_tasks(
+    task_filter: TaskFilter = FilterDepends(TaskFilter),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Тестовый эндопоинт для фильтрации по полям. С использованием обычных join-ов."""
+    creator_alias = aliased(User, name="creators")
+
+    query = (
+        select(
+            Task,
+            creator_alias.id.label("creator_id"),
+            creator_alias.username.label("creator_username"),
+            creator_alias.email.label("creator_email"),
+            func.array_agg(
+                func.json_build_object(
+                    "id", User.id, "username", User.username, "email", User.email
+                )
+            ).label("executors"),
+        )
+        .join(creator_alias, creator_alias.id == Task.creator_id, isouter=True)
+        .join(UserTasksAssociation, Task.task_detail, isouter=True)
+        .join(User, UserTasksAssociation.user_id == User.id, isouter=True)
+        .group_by(Task.id, creator_alias.id)
+    )
+    query = task_filter.filter(query)
+    query = task_filter.apply_users_filter(query)
+
+    query = task_filter.sort(query)
+    result = await session.execute(query)
+    tasks = result.mappings().all()
+    list_of_tasks = []
+
+    for task in tasks:
+        key_task = task["Task"]
+        list_of_tasks.append(
+            {
+                "id": key_task.id,
+                "name": key_task.name,
+                "description": key_task.description,
+                "created_at": key_task.created_at,
+                "deadline": key_task.deadline,
+                "urgency": key_task.urgency,
+                "status": key_task.status,
+                "creator": {
+                    "id": task["creator_id"],
+                    "username": task["creator_username"],
+                    "email": task["creator_email"]
+                    if task["creator_id"]
+                    else "Creator will be added soon",
+                },
+                "executors": task["executors"],
+            }
+        )
+    return list_of_tasks

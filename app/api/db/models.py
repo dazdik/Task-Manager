@@ -2,13 +2,8 @@ from datetime import date
 from enum import Enum as PyEnum
 
 from sqlalchemy import Enum, ForeignKey, String, Text, UniqueConstraint, func
-from sqlalchemy.orm import (
-    DeclarativeBase,
-    Mapped,
-    declared_attr,
-    mapped_column,
-    relationship, validates,
-)
+from sqlalchemy.orm import (DeclarativeBase, Mapped, declared_attr,
+                            mapped_column, relationship, validates)
 
 
 class UserRole(PyEnum):

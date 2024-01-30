@@ -2,7 +2,8 @@ from email.message import EmailMessage
 from functools import wraps
 
 import aiosmtplib
-from fastapi import Depends, HTTPException, WebSocket, WebSocketException, status
+from fastapi import (Depends, HTTPException, WebSocket, WebSocketException,
+                     status)
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
