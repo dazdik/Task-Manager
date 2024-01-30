@@ -7,12 +7,8 @@ from sqladmin import Admin
 
 from app.api import router
 from app.api.db import User, UserRole, sessionmanager
-from app.api.db.admin import (
-    AdminAuth,
-    TaskModelView,
-    UserModelView,
-    UserTasksAssociationModelView,
-)
+from app.api.db.admin import (AdminAuth, TaskModelView, UserModelView,
+                              UserTasksAssociationModelView)
 from app.api.db.admin import router as admin_router
 from app.api.db.settings_db import settings
 

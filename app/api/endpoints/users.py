@@ -10,14 +10,8 @@ from app.api.db import User, UserRole, get_db_session
 from app.api.db.models import UserTasksAssociation
 from app.api.endpoints.filter import UserFilter
 from app.api.endpoints.users_utils import check_role, get_current_user
-from app.api.schemas import (
-    CreateUserSchema,
-    TaskInWork,
-    TaskUserResponse,
-    UserResponse,
-    UsersAllSchemas,
-    UserUpdatePartial,
-)
+from app.api.schemas import (CreateUserSchema, TaskInWork, TaskUserResponse,
+                             UserResponse, UsersAllSchemas, UserUpdatePartial)
 
 router = APIRouter(prefix="/users", tags=["Users"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -49,8 +43,8 @@ async def create_user(
 
 @router.get("/all", response_model=Page[UsersAllSchemas])
 async def get_users(
-        session: AsyncSession = Depends(get_db_session),
-        user_filter: UserFilter = FilterDepends(UserFilter)
+    session: AsyncSession = Depends(get_db_session),
+    user_filter: UserFilter = FilterDepends(UserFilter),
 ):
     """Получение списка всех юзеров с краткой информацией."""
 
@@ -70,6 +64,7 @@ async def get_users(
         users_without_passwords.append(user_data)
 
     return paginate(users_without_passwords)
+
 
 @router.get("/me")
 @check_role(UserRole.ADMIN, UserRole.MANAGER, UserRole.USER)
