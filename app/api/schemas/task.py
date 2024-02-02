@@ -1,8 +1,12 @@
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.api.db import TaskStatus
+
+
+def normalize(name: str) -> str:
+    return name.capitalize()
 
 
 class CreateTaskSchema(BaseModel):
@@ -12,6 +16,9 @@ class CreateTaskSchema(BaseModel):
     deadline: date
     urgency: bool = False
     executors_id: list[int]
+
+    normalize_name = field_validator("name")(normalize)
+    normalize_description = field_validator("description")(normalize)
 
 
 class SuccessResponse(BaseModel):
