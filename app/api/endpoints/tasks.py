@@ -1,9 +1,18 @@
-from fastapi import (APIRouter, BackgroundTasks, Depends, HTTPException,
-                     WebSocket, WebSocketException, status)
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    WebSocket,
+    WebSocketException,
+    status,
+)
 from fastapi.websockets import WebSocketDisconnect
+from fastapi_cache.decorator import cache
 from fastapi_filter import FilterDepends
 from fastapi_pagination import Page, paginate
 from fastapi_pagination.utils import disable_installed_extensions_check
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, joinedload
@@ -13,12 +22,20 @@ from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import User, UserTasksAssociation
 from app.api.endpoints.filter import TaskFilter
 from app.api.endpoints.tasks_utils import get_task_by_id, get_task_response
-from app.api.endpoints.users_utils import (check_role, check_role_for_status,
-                                           get_current_user,
-                                           get_user_with_token,
-                                           send_email_async)
-from app.api.schemas import (CreateTaskSchema, SuccessResponse, TaskEvent,
-                             TaskResponse, TaskUpdatePartial)
+from app.api.endpoints.users_utils import (
+    check_role,
+    check_role_for_status,
+    get_current_user,
+    get_user_with_token,
+    send_email_async,
+)
+from app.api.schemas import (
+    CreateTaskSchema,
+    SuccessResponse,
+    TaskEvent,
+    TaskResponse,
+    TaskUpdatePartial,
+)
 
 disable_installed_extensions_check()
 
@@ -115,6 +132,9 @@ async def create_task(
 
 
 @router.get("/", response_model=Page[TaskResponse])
+@cache(
+    expire=60,
+)
 async def get_all_tasks(
     task_filter: TaskFilter = FilterDepends(TaskFilter),
     user=Depends(get_current_user),
@@ -139,7 +159,10 @@ async def get_all_tasks(
     return paginate(list_of_tasks)
 
 
-@router.get("/{task_id}", response_model=TaskResponse)
+@router.get("/{task_id}")
+@cache(
+    expire=60,
+)
 async def get_task_id(task_id: int, session: AsyncSession = Depends(get_db_session)):
     """Получение таски по айди с информацией о создателе задачи и исполнителе/исполнителях."""
 

@@ -24,6 +24,7 @@ passlib = "^1.7.4"
 aiosmtplib = "^3.0.1"
 fastapi-filter = {extras = ["sqlalchemy"], version = "^1.1.0"}
 fastapi-pagination = "^0.12.14"
+fastapi-cache2 = {extras = ["redis"], version = "^0.2.1"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"

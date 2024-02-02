@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, status
+from fastapi_cache.decorator import cache
 from fastapi_filter import FilterDepends
 from fastapi_pagination import Page, paginate
+
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,9 +13,15 @@ from app.api.db import User, UserRole, get_db_session
 from app.api.db.models import UserTasksAssociation
 from app.api.endpoints.filter import UserFilter
 from app.api.endpoints.users_utils import check_role, get_current_user
-from app.api.schemas import (CreateUserSchema, TaskEvent, TaskInWork,
-                             TaskUserResponse, UserResponse, UsersAllSchemas,
-                             UserUpdatePartial)
+from app.api.schemas import (
+    CreateUserSchema,
+    TaskEvent,
+    TaskInWork,
+    TaskUserResponse,
+    UserResponse,
+    UsersAllSchemas,
+    UserUpdatePartial,
+)
 
 router = APIRouter(prefix="/users", tags=["Users"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -60,6 +68,9 @@ async def create_user(
 
 
 @router.get("/all", response_model=Page[UsersAllSchemas])
+@cache(
+    expire=60,
+)
 async def get_users(
     session: AsyncSession = Depends(get_db_session),
     user_filter: UserFilter = FilterDepends(UserFilter),
@@ -91,6 +102,9 @@ async def get_me(user: User = Depends(get_current_user)):
 
 
 @router.get("/{user_id}")
+@cache(
+    expire=60,
+)
 async def get_user_by_id(user_id: int, session: AsyncSession = Depends(get_db_session)):
     """Получение информации о юзере с тасками, в которых он является исполнителем или создателем."""
 
