@@ -1,6 +1,7 @@
+import re
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.api.db import UserRole
 from app.api.schemas import TaskInWork, TaskUserResponse
@@ -13,8 +14,30 @@ class UserBaseSchema(BaseModel):
 
 
 class CreateUserSchema(UserBaseSchema):
-    hashed_password: str = Field(alias="password")
+    password: str
     role: UserRole = UserRole.USER
+
+    @field_validator("role")
+    def check_role(cls, v):
+        if v in (UserRole.MANAGER, UserRole.ADMIN):
+            raise ValueError("You can't assign yourself such a role.")
+
+    @field_validator("password")
+    def check_pass(cls, v):
+        regex = r"(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}"
+
+        if not re.fullmatch(regex, v):
+            raise ValueError(
+                f"the password must contain more than 8 characters"
+                f"and contain Latin letters of different case and numbers"
+            )
+        return v
+
+    @field_validator("username")
+    def username_alphanumeric(cls, v):
+        assert v.isalnum()
+        assert v.istitle()
+        return v
 
 
 class UserSchema(UserBaseSchema):

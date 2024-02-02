@@ -3,11 +3,12 @@ from fastapi import (APIRouter, BackgroundTasks, Depends, HTTPException,
 from fastapi.websockets import WebSocketDisconnect
 from fastapi_filter import FilterDepends
 from fastapi_pagination import Page, paginate
+from fastapi_pagination.utils import disable_installed_extensions_check
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, joinedload
 
-from app.api.core import ws_manager
+from app.api.core import websocket_, ws_manager
 from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import User, UserTasksAssociation
 from app.api.endpoints.filter import TaskFilter
@@ -19,6 +20,9 @@ from app.api.endpoints.users_utils import (check_role, check_role_for_status,
 from app.api.schemas import (CreateTaskSchema, SuccessResponse, TaskEvent,
                              TaskResponse, TaskUpdatePartial)
 
+disable_installed_extensions_check()
+
+
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 
@@ -26,13 +30,7 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 async def websocket_endpoint_create_task(
     websocket: WebSocket, session=Depends(get_db_session)
 ):
-    user = await get_user_with_token(websocket, session)
-    await ws_manager.connect(user.id, websocket)
-    try:
-        while True:
-            data = await websocket.receive_text()
-    except WebSocketDisconnect:
-        ws_manager.disconnect(user.id, websocket)
+    await websocket_(websocket, session)
 
 
 @router.websocket("/ws/{task_id}")

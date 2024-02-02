@@ -1,4 +1,8 @@
-from fastapi.websockets import WebSocket, WebSocketState
+from fastapi import Depends
+from fastapi.websockets import WebSocket, WebSocketDisconnect, WebSocketState
+
+from app.api.db import get_db_session
+from app.api.endpoints.users_utils import get_user_with_token
 
 
 class WebSocketManager:
@@ -25,3 +29,13 @@ class WebSocketManager:
 
 
 ws_manager = WebSocketManager()
+
+
+async def websocket_(websocket: WebSocket, session=Depends(get_db_session)):
+    user = await get_user_with_token(websocket, session)
+    await ws_manager.connect(user.id, websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        await ws_manager.disconnect(user.id, websocket)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, status
 from fastapi_filter import FilterDepends
 from fastapi_pagination import Page, paginate
 from passlib.context import CryptContext
@@ -6,12 +6,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from app.api.core import websocket_, ws_manager
 from app.api.db import User, UserRole, get_db_session
 from app.api.db.models import UserTasksAssociation
 from app.api.endpoints.filter import UserFilter
 from app.api.endpoints.users_utils import check_role, get_current_user
-from app.api.schemas import (CreateUserSchema, TaskInWork, TaskUserResponse,
-                             UserResponse, UsersAllSchemas, UserUpdatePartial)
+from app.api.schemas import (CreateUserSchema, TaskEvent, TaskInWork,
+                             TaskUserResponse, UserResponse, UsersAllSchemas,
+                             UserUpdatePartial)
 
 router = APIRouter(prefix="/users", tags=["Users"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -21,23 +23,39 @@ def hash_pass(password: str):
     return pwd_context.hash(password)
 
 
+@router.websocket("/ws/")
+async def websocket_endpoint_users(
+    websocket: WebSocket, session=Depends(get_db_session)
+):
+    await websocket_(websocket, session)
+
+
 @router.post("/create", status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_in: CreateUserSchema, session: AsyncSession = Depends(get_db_session)
 ):
     """Создание аккаунта юзера."""
 
-    hashed_pass = hash_pass(user_in.hashed_password)
+    hashed_pass = hash_pass(user_in.password)
 
     user = User(
         email=user_in.email,
         password=hashed_pass,
         username=user_in.username,
-        role=user_in.role,
     )
     session.add(user)
     await session.commit()
     await session.refresh(user)
+    query = await session.execute(select(User))
+    users = query.scalars().all()
+    for client in users:
+        await ws_manager.send_message(
+            client.id,
+            message=TaskEvent(
+                event="new user added",
+                message=f"new user {user.username} added",
+            ).model_dump(),
+        )
     return user
 
 
@@ -121,6 +139,16 @@ async def user_delete(
     user_del = stmt.scalar_one_or_none()
     await session.delete(user_del)
     await session.commit()
+    query = await session.execute(select(User))
+    users = query.scalars().all()
+    for client in users:
+        await ws_manager.send_message(
+            client.id,
+            message=TaskEvent(
+                event="user deleted",
+                message=f"user {user_del.username} has been deleted",
+            ).model_dump(),
+        )
     return {"message": f"{user_del.username} successfully deleted"}
 
 
