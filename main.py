@@ -1,13 +1,12 @@
-import os
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from fastapi_pagination import add_pagination
 from sqladmin import Admin
-from sqlalchemy.ext.asyncio import AsyncSession
+
 
 from app.api import router
 from app.api.db import sessionmanager

@@ -75,7 +75,10 @@ async def get_users(
     session: AsyncSession = Depends(get_db_session),
     user_filter: UserFilter = FilterDepends(UserFilter),
 ):
-    """Получение списка всех юзеров с краткой информацией."""
+    """
+    Получение списка всех юзеров с краткой информацией и
+    возможностью фильтрации по полям.
+    """
 
     query = select(User)
     query = user_filter.filter(query)
@@ -98,6 +101,8 @@ async def get_users(
 @router.get("/me")
 @check_role(UserRole.ADMIN, UserRole.MANAGER, UserRole.USER)
 async def get_me(user: User = Depends(get_current_user)):
+    """Получение текущего юзера."""
+
     return user.username
 
 
@@ -149,6 +154,8 @@ async def user_delete(
     user=Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    """Удаление юзера. Права доступа: админ."""
+
     stmt = await session.execute(select(User).where(User.id == user_id))
     user_del = stmt.scalar_one_or_none()
     await session.delete(user_del)
@@ -173,6 +180,11 @@ async def change_user(
     user=Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    """
+    Обновление информации о юзере.
+    Роль может менять только админ.
+    """
+
     stmt = await session.execute(select(User).where(User.id == user_id))
     user_update = stmt.scalar_one_or_none()
     if not user_update:

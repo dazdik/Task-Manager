@@ -1,7 +1,7 @@
 from datetime import date
 
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.api.db import TaskStatus
 

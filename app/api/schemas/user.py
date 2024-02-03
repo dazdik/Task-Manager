@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 from app.api.db import UserRole
 from app.api.schemas import TaskInWork, TaskUserResponse

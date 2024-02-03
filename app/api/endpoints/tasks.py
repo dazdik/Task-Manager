@@ -140,6 +140,7 @@ async def get_all_tasks(
     user=Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    """Получение всех тасок с возможностью фильтрации по полям."""
     query = select(Task).options(
         joinedload(Task.creator),
         joinedload(Task.task_detail).joinedload(UserTasksAssociation.user),

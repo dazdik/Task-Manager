@@ -52,6 +52,8 @@ class UserTasksAssociationModelView(ModelView, model=UserTasksAssociation):
 
 
 class AdminAuth(AuthenticationBackend):
+    """Вход в админку разрешен только админам."""
+
     async def login(self, request: Request) -> bool:
         async with sessionmanager.session() as session:
             form = await request.form()
