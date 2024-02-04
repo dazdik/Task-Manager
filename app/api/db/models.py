@@ -97,9 +97,13 @@ class Task(Base):
     )
     creator: Mapped["User"] = relationship(back_populates="created_tasks")
 
-    @validates('deadline')
+    @validates("deadline")
     def validate_deadline(self, key, deadline):
-        if deadline is not None and self.created_at is not None and deadline < self.created_at:
+        if (
+            deadline is not None
+            and self.created_at is not None
+            and deadline < self.created_at
+        ):
             raise ValueError("Deadline cannot be earlier than creation date")
         return deadline
 

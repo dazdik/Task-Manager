@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, status
 from fastapi_cache.decorator import cache
 from fastapi_filter import FilterDepends
+from fastapi_limiter.depends import RateLimiter
 from fastapi_pagination import Page, paginate
-
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,15 +13,9 @@ from app.api.db import User, UserRole, get_db_session
 from app.api.db.models import UserTasksAssociation
 from app.api.endpoints.filter import UserFilter
 from app.api.endpoints.users_utils import check_role, get_current_user
-from app.api.schemas import (
-    CreateUserSchema,
-    TaskEvent,
-    TaskInWork,
-    TaskUserResponse,
-    UserResponse,
-    UsersAllSchemas,
-    UserUpdatePartial,
-)
+from app.api.schemas import (CreateUserSchema, TaskEvent, TaskInWork,
+                             TaskUserResponse, UserResponse, UsersAllSchemas,
+                             UserUpdatePartial)
 
 router = APIRouter(prefix="/users", tags=["Users"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -38,7 +32,11 @@ async def websocket_endpoint_users(
     await websocket_(websocket, session)
 
 
-@router.post("/create", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/create",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(RateLimiter(times=2, seconds=5))],
+)
 async def create_user(
     user_in: CreateUserSchema, session: AsyncSession = Depends(get_db_session)
 ):
@@ -67,7 +65,11 @@ async def create_user(
     return user
 
 
-@router.get("/all", response_model=Page[UsersAllSchemas])
+@router.get(
+    "/all",
+    response_model=Page[UsersAllSchemas],
+    dependencies=[Depends(RateLimiter(times=2, seconds=5))],
+)
 @cache(
     expire=60,
 )
@@ -98,7 +100,7 @@ async def get_users(
     return paginate(users_without_passwords)
 
 
-@router.get("/me")
+@router.get("/me", dependencies=[Depends(RateLimiter(times=2, seconds=5))])
 @check_role(UserRole.ADMIN, UserRole.MANAGER, UserRole.USER)
 async def get_me(user: User = Depends(get_current_user)):
     """Получение текущего юзера."""
@@ -106,7 +108,7 @@ async def get_me(user: User = Depends(get_current_user)):
     return user.username
 
 
-@router.get("/{user_id}")
+@router.get("/{user_id}", dependencies=[Depends(RateLimiter(times=2, seconds=5))])
 @cache(
     expire=60,
 )
@@ -173,7 +175,7 @@ async def user_delete(
     return {"message": f"{user_del.username} successfully deleted"}
 
 
-@router.patch("{user_id}")
+@router.patch("{user_id}", dependencies=[Depends(RateLimiter(times=2, seconds=5))])
 async def change_user(
     user_id: int,
     user_in: UserUpdatePartial,

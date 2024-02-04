@@ -4,7 +4,9 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
+from fastapi_limiter import FastAPILimiter
 from fastapi_pagination import add_pagination
+from redis import asyncio as aioredis
 from sqladmin import Admin
 
 
@@ -18,8 +20,6 @@ from app.api.db.admin import (
 )
 from app.api.db.admin import router as admin_router
 from app.api.db.settings_db import settings
-from redis import asyncio as aioredis
-
 
 LOCAL_REDIS_URL = "redis://127.0.0.1:6379"
 
@@ -30,6 +30,7 @@ async def lifespan(app: FastAPI):
         "redis://localhost:6379", encoding="utf8", decode_responses=True
     )
     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
+    await FastAPILimiter.init(redis)
 
     yield
     if sessionmanager.engine is not None:

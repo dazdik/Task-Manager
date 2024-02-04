@@ -1,18 +1,11 @@
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Depends,
-    HTTPException,
-    WebSocket,
-    WebSocketException,
-    status,
-)
+from fastapi import (APIRouter, BackgroundTasks, Depends, HTTPException,
+                     WebSocket, WebSocketException, status)
 from fastapi.websockets import WebSocketDisconnect
 from fastapi_cache.decorator import cache
 from fastapi_filter import FilterDepends
+from fastapi_limiter.depends import RateLimiter
 from fastapi_pagination import Page, paginate
 from fastapi_pagination.utils import disable_installed_extensions_check
-
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, joinedload
@@ -22,20 +15,12 @@ from app.api.db import Task, UserRole, get_db_session
 from app.api.db.models import User, UserTasksAssociation
 from app.api.endpoints.filter import TaskFilter
 from app.api.endpoints.tasks_utils import get_task_by_id, get_task_response
-from app.api.endpoints.users_utils import (
-    check_role,
-    check_role_for_status,
-    get_current_user,
-    get_user_with_token,
-    send_email_async,
-)
-from app.api.schemas import (
-    CreateTaskSchema,
-    SuccessResponse,
-    TaskEvent,
-    TaskResponse,
-    TaskUpdatePartial,
-)
+from app.api.endpoints.users_utils import (check_role, check_role_for_status,
+                                           get_current_user,
+                                           get_user_with_token,
+                                           send_email_async)
+from app.api.schemas import (CreateTaskSchema, SuccessResponse, TaskEvent,
+                             TaskResponse, TaskUpdatePartial)
 
 disable_installed_extensions_check()
 
@@ -75,7 +60,10 @@ async def websocket_endpoint(
 
 
 @router.post(
-    "/create", status_code=status.HTTP_201_CREATED, response_model=SuccessResponse
+    "/create",
+    status_code=status.HTTP_201_CREATED,
+    response_model=SuccessResponse,
+    dependencies=[Depends(RateLimiter(times=2, seconds=5))],
 )
 @check_role(UserRole.MANAGER)
 async def create_task(
@@ -131,7 +119,11 @@ async def create_task(
     }
 
 
-@router.get("/", response_model=Page[TaskResponse])
+@router.get(
+    "/",
+    response_model=Page[TaskResponse],
+    dependencies=[Depends(RateLimiter(times=2, seconds=5))],
+)
 @cache(
     expire=60,
 )
@@ -160,7 +152,7 @@ async def get_all_tasks(
     return paginate(list_of_tasks)
 
 
-@router.get("/{task_id}")
+@router.get("/{task_id}", dependencies=[Depends(RateLimiter(times=2, seconds=5))])
 @cache(
     expire=60,
 )
@@ -199,7 +191,7 @@ async def delete_task_id(
     return {"massage": f"This task does not exist or you do not have permissions"}
 
 
-@router.patch("/{task_id}")
+@router.patch("/{task_id}", dependencies=[Depends(RateLimiter(times=2, seconds=5))])
 @check_role(UserRole.USER, UserRole.MANAGER)
 async def update_task(
     task_id: int,
@@ -270,7 +262,7 @@ async def update_task(
     return {"massage": f"User {user.username} update the task"}
 
 
-@router.get("/test")
+@router.get("/test", dependencies=[Depends(RateLimiter(times=2, seconds=5))])
 async def get_test_tasks(
     task_filter: TaskFilter = FilterDepends(TaskFilter),
     session: AsyncSession = Depends(get_db_session),
