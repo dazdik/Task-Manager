@@ -2,7 +2,8 @@
 name = "task-manager"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["Darya Konnova <dashustic@yandex.ru>", "Rishat Vergasov <Zvezda-Rishat1991@yandex.ru>", ]
+license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
