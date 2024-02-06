@@ -50,7 +50,7 @@ Task-Manager/
 
 1. Клонируйте репозиторий:
    ```bash
-   git clone https://github.com/dazdik/api_yamdb
+   git clone https://github.com/dazdik/Task-Manager/
    ```
 2. Перейдите в папку проекта:
    ```bash
@@ -102,7 +102,7 @@ Task-Manager/
 Создайте суперпользователя(админа):
 ```
 cd commands
-python3 create_superuser.py
+python3 createsuperuser.py
 ```
 
 ## Конечные точки API
