@@ -102,7 +102,7 @@ Task-Manager/
 Создайте суперпользователя(админа):
 ```
 cd commands
-python3 create_superuser.py
+python3 createsuperuser.py
 ```
 
 ## Конечные точки API
