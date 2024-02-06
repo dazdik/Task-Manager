@@ -57,7 +57,7 @@ class TaskFilter(Filter):
         return query
 
 
-class UserFilter(UserTaskFilter):
+class UserFilter(ExecutorFilter):
     email__ilike: str | None = None
     role: UserRole | None = None
     order_by: list[str] | None = None
