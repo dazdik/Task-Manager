@@ -1,0 +1,74 @@
+[
+  {
+    "username": "Hubble",
+    "password": "oWKz5nXRLHqA",
+    "email": "douglasdesiree@hotmail.com",
+    "role": "MANAGER"
+  },
+  {
+    "username": "Lovelace",
+    "password": "bwlbUl3DBaLE",
+    "email": "urosario@bridges-taylor.biz",
+    "role": "MANAGER"
+  },
+  {
+    "username": "Hawking",
+    "password": "6hPn5SQTzgKL",
+    "email": "kflores@gmail.com",
+    "role": "MANAGER"
+  },
+  {
+    "username": "Hoyle",
+    "password": "eZCWlSX26xJf",
+    "email": "teresalove@lane-young.com",
+    "role": "USER"
+  },
+  {
+    "username": "Syrdin",
+    "password": "2Ily5BM5Zd5z",
+    "email": "debraallen@hotmail.com",
+    "role": "USER"
+  },
+  {
+    "username": "Einstein",
+    "password": "nTlJlD67pCDi",
+    "email": "ugross@miller.com",
+    "role": "USER"
+  },
+  {
+    "username": "Veb",
+    "password": "3jfmC5uOO7i3",
+    "email": "walkerdalton@garcia-green.com",
+    "role": "USER"
+  },
+  {
+    "username": "Gershil",
+    "password": "2CxTdA6b3zjW",
+    "email": "hudsonleonard@hotmail.com",
+    "role": "USER"
+  },
+  {
+    "username": "Ptolemy",
+    "password": "olZIXCXaGt5f",
+    "email": "grosskelly@rasmussen-lindsey.com",
+    "role": "USER"
+  },
+  {
+    "username": "Copernicus",
+    "password": "CDcpPbRRA1u4",
+    "email": "rodriguezronald@yahoo.com",
+    "role": "USER"
+  },
+  {
+    "username": "Curie",
+    "password": "g8KXXiLr5wCt",
+    "email": "ksmith@salazar.net",
+    "role": "USER"
+  },
+  {
+    "username": "Tyson",
+    "password": "CEu2fLMABwh2",
+    "email": "robin13@hotmail.com",
+    "role": "USER"
+  }
+]

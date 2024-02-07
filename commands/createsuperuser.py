@@ -1,9 +1,8 @@
-from sqlalchemy import select
-
-
 import asyncio
 
-from app.api.db import sessionmanager, User, UserRole
+from sqlalchemy import select
+
+from app.api.db import User, UserRole, sessionmanager
 from app.api.endpoints.users import hash_pass
 
 

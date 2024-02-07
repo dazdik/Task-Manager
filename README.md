@@ -105,6 +105,11 @@ cd commands
 python3 createsuperuser.py
 ```
 
+Заполните базу тестовыми юзерами и задачами:
+```
+python3 fill_database.py
+```
+
 ## Конечные точки API
 
 ### Аутентификация
