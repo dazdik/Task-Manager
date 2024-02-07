@@ -2,7 +2,7 @@ import asyncio
 import json
 import random
 
-from sqlalchemy import select
+from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.db import Task, User, UserRole, sessionmanager
@@ -20,16 +20,20 @@ async def load_users(filename: str) -> None:
 
     with open(filename, "r", encoding="utf-8") as file:
         users = json.load(file)
-        for user in users:
-            async with sessionmanager.session() as session:
-                new_user = User(
-                    username=user["username"],
-                    password=hash_pass(user["password"]),
-                    email=user["email"],
-                    role=user["role"],
-                )
-                session.add(new_user)
-                await session.commit()
+        async with sessionmanager.session() as session:
+            await session.execute(
+                insert(User),
+                [
+                    {
+                        "username": user["username"],
+                        "password": hash_pass(user["password"]),
+                        "email": user["email"],
+                        "role": user["role"],
+                    }
+                    for user in users
+                ],
+            )
+            await session.commit()
     print(f"БД заполнена тестовыми user-ами")
 
 
@@ -41,8 +45,10 @@ async def load_tasks(filename: str) -> None:
         async with sessionmanager.session() as session:
             stmt = await filter_user_role(role=UserRole.USER, session=session)
             data_executors.extend([executor.id for executor in stmt.scalars().all()])
+
             stmt = await filter_user_role(role=UserRole.MANAGER, session=session)
             data_creators.extend([creator.id for creator in stmt.scalars().all()])
+
             for task in tasks:
                 new_task = Task(
                     name=task["name"],
