@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 
 from sqlalchemy import select
@@ -18,7 +19,7 @@ async def create_superuser(username: str, password: str, email: str):
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
         if user:
-            print("superuser alredy exists")
+            print("superuser already exists")
             return False
         if user is None:
             hashed_password = hash_pass(password)
@@ -36,10 +37,15 @@ async def create_superuser(username: str, password: str, email: str):
 
 
 async def main():
-    username = input("Введите имя пользователя: ")
-    password = input("Введите пароль: ")
-    email = input("Введите email: ")
-    await create_superuser(username, password, email)
+    parser = argparse.ArgumentParser(description="Создание суперпользователя.")
+    parser.add_argument("--username", required=True, help="Имя пользователя")
+    parser.add_argument("--email", required=True, help="Email пользователя")
+    parser.add_argument("--password", required=True, help="Пароль пользователя")
+    args = parser.parse_args()
+
+    await create_superuser(
+        username=args.username, password=args.password, email=args.email
+    )
 
 
 if __name__ == "__main__":

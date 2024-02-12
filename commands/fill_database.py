@@ -2,7 +2,7 @@ import asyncio
 import json
 import random
 
-from sqlalchemy import select, insert
+from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.db import Task, User, UserRole, sessionmanager
@@ -69,8 +69,8 @@ async def load_tasks(filename: str) -> None:
 
 
 async def main():
-    await load_users("data/test_users.json")
-    await load_tasks("data/test_tasks.json")
+    await load_users("commands/data/test_users.json")
+    await load_tasks("commands/data/test_tasks.json")
 
 
 if __name__ == "__main__":

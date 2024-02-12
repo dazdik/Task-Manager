@@ -1,6 +1,5 @@
 from contextlib import asynccontextmanager
 
-import uvicorn
 from fastapi import FastAPI
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
@@ -15,8 +14,6 @@ from app.api.db.admin import (AdminAuth, TaskModelView, UserModelView,
                               UserTasksAssociationModelView)
 from app.api.db.admin import router as admin_router
 from app.api.db.settings_db import settings
-
-LOCAL_REDIS_URL = "redis://127.0.0.1:6379"
 
 
 @asynccontextmanager
@@ -46,12 +43,3 @@ admin.add_view(UserTasksAssociationModelView)
 app.include_router(router)
 app.include_router(admin_router)
 add_pagination(app)
-
-if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="127.0.0.1",
-        port=8066,
-        reload=True,
-        workers=3,
-    )
