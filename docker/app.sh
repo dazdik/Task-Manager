@@ -1,7 +1,7 @@
 #!/bin/bash
 export PYTHONPATH=/task_manager:$PYTHONPATH
 
-alembic revision --autogenerate -m 'create tables'
+#alembic revision --autogenerate -m 'create tables'
 alembic upgrade head
 
 python commands/fill_database.py

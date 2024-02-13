@@ -9,7 +9,6 @@ class PostgresqlSettings(BaseModel):
     USER: str
     NAME: str
     HOST: str
-    HOSTNAME: str
 
 
 class AuthSettings(BaseModel):

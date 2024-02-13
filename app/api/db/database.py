@@ -1,14 +1,18 @@
 import contextlib
 from typing import AsyncIterator
 
-from sqlalchemy.ext.asyncio import (AsyncConnection, AsyncSession,
-                                    async_sessionmaker, create_async_engine)
+from sqlalchemy.ext.asyncio import (
+    AsyncConnection,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from app.api.db.settings_db import settings
 
 db_url: str = (
     f"postgresql+asyncpg://{settings.DB.USER}:"
-    f"{settings.DB.PASSWORD}@{settings.DB.HOSTNAME}:"
+    f"{settings.DB.PASSWORD}@{settings.DB.HOST}:"
     f"{settings.DB.PORT}/{settings.DB.NAME}"
 )
 
